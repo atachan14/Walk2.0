@@ -12,8 +12,7 @@ public class GameData : MonoBehaviour
     public int TurnCount { get; set; }
     public int NotchCount { get; set; }
     public DateTime StartTime {  get; set; }
-
-    public bool InHome { get; set; } = false;
+    public bool IsResult { get; set; } = false;
     public Pos PlayerPos => PathSteps[^1].pos;
     public int PlayerDir => PathSteps[^1].dir;
     public Pos NextPos => GetNextPos();

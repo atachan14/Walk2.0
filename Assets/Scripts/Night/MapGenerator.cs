@@ -1,7 +1,9 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using static GameData;
+using Random = UnityEngine.Random;
 
 public class MapGenerator : MonoBehaviour
 {
@@ -30,9 +32,12 @@ public class MapGenerator : MonoBehaviour
         SetupTree();
         SetupHome();
         SetupPlayer();
+        GameData.Instance.StartTime = DateTime.Now;
+
 #if UNITY_EDITOR
         DebugMapManager.Instance.Setup();
 #endif
+
         yield break;
     }
 

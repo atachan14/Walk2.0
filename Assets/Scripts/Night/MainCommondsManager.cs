@@ -130,7 +130,7 @@ public class MainCommondsManager : MonoBehaviour
     {
         yield return CurtainManager.Instance.FrontFlow("Now Walking..", "");
         GameData.Instance.AddWalk();
-        GameData.Instance.InHome = true;
+        GameData.Instance.IsResult = true;
         MainDisplay.Instance.UpdateDisplay();
         yield return CurtainManager.Instance.BackFlow("Now Walked.", "");
     }

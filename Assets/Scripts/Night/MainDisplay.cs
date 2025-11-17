@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -22,6 +23,17 @@ public class MainDisplay : MonoBehaviour
     {
         Instance = this;
     }
+
+    private void Update()
+    {
+        var elapsed = DateTime.Now - GameData.Instance.StartTime;
+
+        int hours = (int)elapsed.TotalHours;    // í éZéûä‘ÇÃêÆêîïîï™
+        int minutes = elapsed.Minutes;          // 0Å`59
+        int seconds = elapsed.Seconds;          // 0Å`59
+
+        timeTMP.text = $"{hours:00}:{minutes:00}:{seconds:00}";
+    }
     public void UpdateNight()
     {
         nightTMP.text = $"Night:{NightSession.Instance.CurrentSize.ToString()}";
@@ -30,13 +42,12 @@ public class MainDisplay : MonoBehaviour
     {
         walkTMP.text = $"Walk:{GameData.Instance.WalkCount}";
         turnTMP.text = $"Turn:{GameData.Instance.TurnCount}";
-        timeTMP.text = $"Time:ñ¢é¿ëï";
     }
 
 
     public void UpdateDisplay()
     {
-        if (!GameData.Instance.InHome)
+        if (!GameData.Instance.IsResult)
         {
             UpdateInGame();
         }

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TileSO
   type: 0
   mainVisual:
-  - {fileID: 8382853024136180452, guid: c442d4acf55ea784c9da129137745464, type: 3}
+  - {fileID: 8471368101900629059, guid: d726297032df007428001e067ac4744a, type: 3}
   mainText:
   - "\u7121\u3060"
   commond:

@@ -9,7 +9,7 @@ public class CurtainManager : MonoBehaviour
     [SerializeField] private CanvasGroup group;
     [SerializeField] private TextMeshProUGUI centerTMP;
     [SerializeField] private TextMeshProUGUI bottomTMP;
-    [SerializeField] private float fadeTime = 0.8f;
+    [SerializeField] private float fadeTime = 0.5f;
 
     private void Awake()
     {
