@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd5c8576284f49148b76b2b544a6c86b, type: 3}
+  m_Name: NoneData
+  m_EditorClassIdentifier: Assembly-CSharp::TileSO
+  type: 0
+  mainVisual:
+  - {fileID: 8382853024136180452, guid: c442d4acf55ea784c9da129137745464, type: 3}
+  mainText:
+  - "\u7121\u3060"
+  commond:
+  - {fileID: 11400000, guid: 6f3a3b89b98efb74b934c9d838fc6a11, type: 2}
+  resultPrefab: {fileID: 2298743864117955374, guid: 82c3e7ffeda2e5a45be76688b660f69d, type: 3}

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 491f53220f04ab3479460a1e7ba57d41, type: 3}
+  m_Name: HomeData
+  m_EditorClassIdentifier: Assembly-CSharp::HomeTileData
+  type: 4
+  mainVisual:
+  - {fileID: -9126115544629603560, guid: 594162869c147e641a63cfa5a5c04cc8, type: 3}
+  - {fileID: 8382853024136180452, guid: c442d4acf55ea784c9da129137745464, type: 3}
+  - {fileID: -500575508164682485, guid: e38f484699fb63b4ebddb79f6e0c7673, type: 3}
+  - {fileID: 8382853024136180452, guid: c442d4acf55ea784c9da129137745464, type: 3}
+  mainText:
+  - "\u5BB6\u3060\uFF01"
+  - "\u5BB6\u3060\uFF01\u5165\u53E3\u306F\u53F3\u3060\uFF01"
+  - "\u5BB6\u3060\uFF01\u5165\u53E3\u306F\u88CF\u3060\uFF01"
+  - "\u5BB6\u3060\uFF01\u5165\u53E3\u306F\u5DE6\u3060\uFF01"
+  commond:
+  - {fileID: 11400000, guid: c5444b685c14c3d42b3347f902c7fbaf, type: 2}
+  - {fileID: 11400000, guid: 959e0bc521a13454993e71ad0c5bd9f9, type: 2}
+  - {fileID: 11400000, guid: 959e0bc521a13454993e71ad0c5bd9f9, type: 2}
+  - {fileID: 11400000, guid: 959e0bc521a13454993e71ad0c5bd9f9, type: 2}
+  resultPrefab: {fileID: 8411005347467495992, guid: bcfe68b819cd0894a9c7dcf2da882909, type: 3}

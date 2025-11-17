@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0af202796d712c4ca9667680cea9912, type: 3}
+  m_Name: TreeData
+  m_EditorClassIdentifier: Assembly-CSharp::TreeData
+  type: 3
+  mainVisual:
+  - {fileID: 3601206573367325089, guid: 6aa9c189f6e60f642af7eef807bbd938, type: 3}
+  mainText:
+  - "\u6728\u3060"
+  commond:
+  - {fileID: 11400000, guid: 2bdc3a55f55a386468eee63891e651e6, type: 2}
+  - {fileID: 11400000, guid: 959e0bc521a13454993e71ad0c5bd9f9, type: 2}
+  resultPrefab: {fileID: 2178972873413240651, guid: d08729d0b91bf17429785dc07dd4b9a8, type: 3}
