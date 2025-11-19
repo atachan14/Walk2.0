@@ -32,9 +32,9 @@ public class MainDisplay : MonoBehaviour
     void UpdateTime()
     {
         TimeSpan elapsed;
-        if (GameData.Instance.Time != null)
+        if (GameData.Instance.EndTime != null)
         {
-            elapsed = (TimeSpan)GameData.Instance.Time;
+            elapsed = (DateTime)GameData.Instance.EndTime-GameData.Instance.StartTime;
         }
         else
         {
@@ -58,7 +58,7 @@ public class MainDisplay : MonoBehaviour
 
     public void UpdateDisplay()
     {
-        if (GameData.Instance.Time == null)
+        if (GameData.Instance.EndTime == null)
         {
             UpdateInGame();
         }

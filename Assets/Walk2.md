@@ -32,4 +32,4 @@ SaveData
         ├── StartTime:GameData.Instance.StartTime
         ├── map:  [...]
         ├── steps:  [...]
-        └── isResult:GameData.Instance.IsResult
+        └── isEnd:GameData.Instance.Time

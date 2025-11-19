@@ -90,7 +90,6 @@ public class MainCommondsManager : MonoBehaviour
                 StartCoroutine(DiaryExe());
                 break;
             default:
-
                 yield break;
         }
     }
@@ -130,7 +129,7 @@ public class MainCommondsManager : MonoBehaviour
     {
         yield return CurtainManager.Instance.FrontFlow("Now Walking..", "");
         GameData.Instance.AddWalk();
-        GameData.Instance.Time = DateTime.Now-GameData.Instance.StartTime;
+        GameData.Instance.EndTime = DateTime.Now;
 
         if (NameManager.Instance.Name != null) 
         {

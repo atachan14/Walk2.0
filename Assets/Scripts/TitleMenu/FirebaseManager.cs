@@ -66,7 +66,7 @@ public class FirebaseManager : MonoBehaviour
         Debug.Log("AddClearRecord Start");
         try
         {
-            var elapsed = DateTime.Now - GameData.Instance.StartTime;
+            var elapsed = (DateTime)GameData.Instance.EndTime - GameData.Instance.StartTime;
             long timeSec = (long)elapsed.TotalSeconds;
 
             var data = new Dictionary<string, object>
@@ -87,6 +87,38 @@ public class FirebaseManager : MonoBehaviour
         {
             Debug.LogError("ClearRecord保存失敗: " + e);
             throw; // 呼び出し元にも知らせたいならそのまま再スロー
+        }
+    }
+    public async Task AddSaveData()
+    {
+        try
+        {
+            var uid = SystemInfo.deviceUniqueIdentifier;
+
+            var mapList = new List<object>();   // あとで実装
+            var stepList = new List<object>();  // あとで実装
+
+            var data = new Dictionary<string, object>
+        {
+            { "mapSize", NightSession.Instance.CurrentSize },
+            { "startTime", Timestamp.FromDateTime(GameData.Instance.StartTime.ToUniversalTime()) },
+            { "map", mapList },
+            { "steps", stepList }
+        };
+
+            // 終了してる場合だけ endTime を追加
+            if (GameData.Instance.EndTime != null)
+            {
+                data["endTime"] = Timestamp.FromDateTime(GameData.Instance.EndTime.Value.ToUniversalTime());
+            }
+
+            var doc = db.Collection("SaveData").Document(uid);
+            await doc.SetAsync(data, SetOptions.MergeAll);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("SaveData保存失敗: " + e);
+            throw;
         }
     }
 
