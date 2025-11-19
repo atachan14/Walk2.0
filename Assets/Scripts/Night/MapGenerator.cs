@@ -164,8 +164,6 @@ public class MapGenerator : MonoBehaviour
                 }
             }
         }
-
-        Debug.Log($"Tree setup complete: total={CountTree(map)}");
     }
 
     int CountTree(Dictionary<Pos, Tile> map)
@@ -208,7 +206,7 @@ public class MapGenerator : MonoBehaviour
 
         Pos chosen = candidates[Random.Range(0, candidates.Count)];
         Map[chosen] = new HomeTile();
-        Debug.Log($"SetupHome: Home placed at {chosen} (candidates={candidates.Count})");
+
     }
 
     void SetupPlayer()

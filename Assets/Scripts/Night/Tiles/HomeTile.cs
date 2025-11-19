@@ -12,7 +12,6 @@ public class HomeTile :Tile
     public override Sprite GetMainVisual()
     {
         int dir = dirs[GetTargetDir()];
-        Debug.Log(dir);
         return AssetManager.Instance.TileData.Home.mainVisual[dir];
     }
     public override string GetMainText()

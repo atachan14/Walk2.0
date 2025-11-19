@@ -1,4 +1,7 @@
 using Firebase.Firestore;
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -18,16 +21,6 @@ public class FirebaseManager : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
     }
 
-    // 名前が存在するかチェック
-    public async Task<bool> CheckName()
-    {
-        var uid = SystemInfo.deviceUniqueIdentifier;
-        var doc = db.Collection("ParsonalData").Document(uid);
-        var snap = await doc.GetSnapshotAsync();
-
-        return snap.Exists && snap.ContainsField("name");
-    }
-
     // 名前取得（null = 未設定）
     public async Task<string> GetName()
     {
@@ -42,7 +35,6 @@ public class FirebaseManager : MonoBehaviour
         return snap.GetValue<string>("name");
     }
 
-    // ★ これが追加する SetName() 完成形
     public async Task SetName(string name)
     {
         var uid = SystemInfo.deviceUniqueIdentifier;
@@ -51,30 +43,51 @@ public class FirebaseManager : MonoBehaviour
 
         var data = new
         {
-            name = name,
-            created = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+            name,
+            created = DateTime.Now
         };
 
         await doc.SetAsync(data, SetOptions.MergeAll);
     }
 
     // クリア記録追加
+    public IEnumerator AddClearRecordCoroutine()
+    {
+        Debug.Log("AddClearRecordCoroutine Start");
+        var task = AddClearRecord();
+        while (!task.IsCompleted)
+            yield return null;
+
+        if (task.IsFaulted)
+            Debug.LogError(task.Exception);
+    }
     public async Task AddClearRecord()
     {
-        var uid = SystemInfo.deviceUniqueIdentifier;
-
-        var clearRecord = new
+        Debug.Log("AddClearRecord Start");
+        try
         {
-            uid,
-            name = NameManager.Instance.Name,
-            mapSize = NightSession.Instance.CurrentSize,
-            walk = GameData.Instance.WalkCount,
-            turn = GameData.Instance.TurnCount,
-            time = GameData.Instance.StartTime,
-            date = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+            var elapsed = DateTime.Now - GameData.Instance.StartTime;
+            long timeSec = (long)elapsed.TotalSeconds;
+
+            var data = new Dictionary<string, object>
+        {
+            { "uid",  SystemInfo.deviceUniqueIdentifier},
+            { "name", NameManager.Instance.Name },
+            { "mapSize", NightSession.Instance.CurrentSize },
+            { "walkCount", GameData.Instance.WalkCount },
+            { "turnCount", GameData.Instance.TurnCount },
+            { "timeSec", timeSec },
+            { "startTime", Timestamp.FromDateTime(GameData.Instance.StartTime.ToUniversalTime()) }
         };
 
-        var doc = db.Collection("ClearRecords").Document();
-        await doc.SetAsync(clearRecord);
+            await db.Collection("ClearRecords").AddAsync(data);
+            Debug.Log("ClearRecord保存成功");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("ClearRecord保存失敗: " + e);
+            throw; // 呼び出し元にも知らせたいならそのまま再スロー
+        }
     }
+
 }

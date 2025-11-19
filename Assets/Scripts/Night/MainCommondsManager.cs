@@ -130,7 +130,14 @@ public class MainCommondsManager : MonoBehaviour
     {
         yield return CurtainManager.Instance.FrontFlow("Now Walking..", "");
         GameData.Instance.AddWalk();
-        GameData.Instance.IsResult = true;
+        GameData.Instance.Time = DateTime.Now-GameData.Instance.StartTime;
+
+        if (NameManager.Instance.Name != null) 
+        {
+            yield return FirebaseManager.Instance.AddClearRecordCoroutine();
+            Debug.Log("GoHomeExe: Name exists, added clear record.");
+        }
+
         MainDisplay.Instance.UpdateDisplay();
         yield return CurtainManager.Instance.BackFlow("Now Walked.", "");
     }
@@ -141,6 +148,7 @@ public class MainCommondsManager : MonoBehaviour
         {
             yield return NameInputManager.Instance.InputName();
             yield return CurtainManager.Instance.MiddleText("now sleeping..", "");
+            yield return FirebaseManager.Instance.AddClearRecordCoroutine();
         }
         else
         {

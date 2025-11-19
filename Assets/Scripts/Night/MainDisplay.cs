@@ -26,12 +26,23 @@ public class MainDisplay : MonoBehaviour
 
     private void Update()
     {
-        var elapsed = DateTime.Now - GameData.Instance.StartTime;
+        UpdateTime();
+    }
 
+    void UpdateTime()
+    {
+        TimeSpan elapsed;
+        if (GameData.Instance.Time != null)
+        {
+            elapsed = (TimeSpan)GameData.Instance.Time;
+        }
+        else
+        {
+            elapsed = DateTime.Now - GameData.Instance.StartTime;
+        }
         int hours = (int)elapsed.TotalHours;    // 通算時間の整数部分
         int minutes = elapsed.Minutes;          // 0～59
         int seconds = elapsed.Seconds;          // 0～59
-
         timeTMP.text = $"{hours:00}:{minutes:00}:{seconds:00}";
     }
     public void UpdateNight()
@@ -47,7 +58,7 @@ public class MainDisplay : MonoBehaviour
 
     public void UpdateDisplay()
     {
-        if (!GameData.Instance.IsResult)
+        if (GameData.Instance.Time == null)
         {
             UpdateInGame();
         }
@@ -56,12 +67,10 @@ public class MainDisplay : MonoBehaviour
             if (NameManager.Instance.Name != null)
             {
                 UpdateInHome();
-                Debug.Log("名前ありのホーム表示");
             }
             else
             {
                 UpdateNoNameInHome();
-                Debug.Log("名前なしのホーム表示");
             }
         }
 

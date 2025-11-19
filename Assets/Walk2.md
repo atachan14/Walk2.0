@@ -13,12 +13,12 @@
 ClearRecords
     └── <auto-id>
         ├── uid
-        ├── name
-        ├── mapSize
-        ├── walk
-        ├── turn
-        ├── time
-        └── date
+        ├── NameManager.Instance.Name
+        ├── NightSession.Instance.CurrentSize
+        ├── GameData.Instance.WalkCount
+        ├── GameData.Instance.TurnCount
+        ├── DateTime.Now - GameData.Instance.StartTime
+        └── GameData.Instance.StartTime
 
 ParsonalData
     └── <uid>
@@ -28,7 +28,8 @@ ParsonalData
 
 SaveData
     └── <uid>
-        ├── mapSize
-        ├── date
+        ├── mapSize:NightSession.Instance.CurrentSize
+        ├── StartTime:GameData.Instance.StartTime
         ├── map:  [...]
-        └── steps: [...]
+        ├── steps:  [...]
+        └── isResult:GameData.Instance.IsResult
