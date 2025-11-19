@@ -5,8 +5,6 @@ using UnityEngine.UI;
 public enum TileType
 {
     none,
-    river,
-    bridge,
     tree,
     home
 }

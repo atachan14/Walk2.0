@@ -17,7 +17,7 @@ ClearRecords
         ├── NightSession.Instance.CurrentSize
         ├── GameData.Instance.WalkCount
         ├── GameData.Instance.TurnCount
-        ├── DateTime.Now - GameData.Instance.StartTime
+        ├── GameData.Instance.EndTime - GameData.Instance.StartTime
         └── GameData.Instance.StartTime
 
 ParsonalData
@@ -29,7 +29,11 @@ ParsonalData
 SaveData
     └── <uid>
         ├── mapSize:NightSession.Instance.CurrentSize
+        ├── GameData.Instance.WalkCount
+        ├── GameData.Instance.TurnCount
+        ├── GameData.Instance.NotchCount
         ├── StartTime:GameData.Instance.StartTime
+        ├── EndTime:GameData.Instance.EndTime
         ├── map:  [...]
-        ├── steps:  [...]
-        └── isEnd:GameData.Instance.Time
+        └── steps:  [...]
+ 

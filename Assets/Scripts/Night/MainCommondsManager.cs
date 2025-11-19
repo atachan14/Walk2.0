@@ -38,7 +38,7 @@ public class MainCommondsManager : MonoBehaviour
         btms[i].onClick.AddListener(() =>
         {
             if (datas[i] == null) return;
-            StartCoroutine(Exe(datas[i].type));
+            StartCoroutine(Exe(datas[i]));
         });
     }
     public void Init()
@@ -51,47 +51,51 @@ public class MainCommondsManager : MonoBehaviour
             btms[index].onClick.AddListener(() =>
             {
                 if (datas[index] == null) return;
-                StartCoroutine(Exe(datas[index].type));
+                StartCoroutine(Exe(datas[index]));
             });
         }
     }
-    public IEnumerator Exe(CommondType ct)
+    public IEnumerator Exe(CommondData cd)
     {
-        switch (ct)
+        switch (cd.type)
         {
             case CommondType.None:
-                StartCoroutine(NoneExe());
+                yield return NoneExe();
                 break;
 
             case CommondType.LeftTurn:
-                StartCoroutine(LeftTurnExe());
-                break;
+                yield return LeftTurnExe();                break;
 
             case CommondType.Walk:
-                StartCoroutine(WalkExe());
+                yield return WalkExe();
                 break;
 
             case CommondType.RightTurn:
-                StartCoroutine(RightTurnExe());
+                yield return RightTurnExe();
                 break;
 
             case CommondType.Notch:
-                StartCoroutine(NotchExe());
+                yield return NotchExe();
                 break;
 
             case CommondType.GoHome:
-                StartCoroutine(GoHomeExe());
+                yield return GoHomeExe();
                 break;
 
             case CommondType.Sleep:
-                StartCoroutine(SleepExe());
+                yield return SleepExe();
                 break;
             case CommondType.Diary:
-                StartCoroutine(DiaryExe());
+                yield return DiaryExe();
                 break;
             default:
                 yield break;
         }
+        if (!cd.dontSave)
+        {
+            yield return FirebaseManager.Instance.SetSaveDataCoroutine();
+        }
+
     }
     IEnumerator NoneExe()
     {
@@ -134,7 +138,6 @@ public class MainCommondsManager : MonoBehaviour
         if (NameManager.Instance.Name != null) 
         {
             yield return FirebaseManager.Instance.AddClearRecordCoroutine();
-            Debug.Log("GoHomeExe: Name exists, added clear record.");
         }
 
         MainDisplay.Instance.UpdateDisplay();
@@ -148,13 +151,14 @@ public class MainCommondsManager : MonoBehaviour
             yield return NameInputManager.Instance.InputName();
             yield return CurtainManager.Instance.MiddleText("now sleeping..", "");
             yield return FirebaseManager.Instance.AddClearRecordCoroutine();
+            
         }
         else
         {
             yield return CurtainManager.Instance.FrontFlow("now sleeping..", "");
         }
-            
 
+        yield return FirebaseManager.Instance.ClearSaveDataCoroutine();
         NightSession.Instance.CurrentSize++;
         yield return CurtainManager.Instance.GroupStayBackFlow("now sleeped..", "");
         UnityEngine.SceneManagement.SceneManager.LoadScene("Night");

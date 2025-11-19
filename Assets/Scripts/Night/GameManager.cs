@@ -11,7 +11,7 @@ public class GameManager : MonoBehaviour
 {
 
     public static GameManager Instance;
-    
+
     private void Awake()
     {
         Instance = this;
@@ -26,14 +26,30 @@ public class GameManager : MonoBehaviour
     {
         yield return StartCoroutine(PlayOpening());
 
-        
+
     }
     IEnumerator PlayOpening()
     {
-        yield return StartCoroutine(CurtainManager.Instance
-            .OpeningFrontFlow());
+        yield return CurtainManager.Instance.OpeningFrontFlow();
 
-        yield return StartCoroutine(MapGenerator.Instance.Generate());
+        bool hasSave = false;
+
+        // SaveData の有無だけを受け取る
+        yield return FirebaseManager.Instance.LoadSaveDataCoroutine(result =>
+        {
+            hasSave = result;
+        });
+
+        if (hasSave)
+        {
+            Debug.Log("セーブデータあったので続きから開始");
+        }
+        else
+        {
+            Debug.Log("セーブデータ無し。新規開始");
+            yield return MapGenerator.Instance.Generate();
+        }
+
 
         MainCommondsManager.Instance.Init();
         MainDisplay.Instance.UpdateNight();
@@ -44,7 +60,7 @@ public class GameManager : MonoBehaviour
     }
 
 
-    
+
 
 
 

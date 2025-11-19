@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0af202796d712c4ca9667680cea9912, type: 3}
   m_Name: TreeData
   m_EditorClassIdentifier: Assembly-CSharp::TreeData
-  type: 3
+  type: 1
   mainVisual:
   - {fileID: 3601206573367325089, guid: 6aa9c189f6e60f642af7eef807bbd938, type: 3}
   mainText:

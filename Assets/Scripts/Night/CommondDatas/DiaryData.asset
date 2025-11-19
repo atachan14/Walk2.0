@@ -15,6 +15,7 @@ MonoBehaviour:
   type: 7
   btnIsActive: 1
   btnText: "\u65E5\u8A18"
+  dontSave: 1
   curtainIsActive: 0
   curtainOpenText: 
   curtainCloseText: 

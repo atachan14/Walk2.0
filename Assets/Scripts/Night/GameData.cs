@@ -6,8 +6,8 @@ using UnityEngine;
 public class GameData : MonoBehaviour
 {
     public static GameData Instance { get; private set; }
-    public Dictionary<Pos, Tile> Map { get; private set; } = new();
-    public List<PathStep> PathSteps { get; } = new();
+    public Dictionary<Pos, Tile> Map { get; set; } = new();
+    public List<PathStep> PathSteps { get; set; } = new();
     public int WalkCount { get; set; }
     public int TurnCount { get; set; }
     public int NotchCount { get; set; }

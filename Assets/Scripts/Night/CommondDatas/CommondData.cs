@@ -9,6 +9,8 @@ public class CommondData : ScriptableObject
     public bool btnIsActive;
     public string btnText;
 
+    public bool dontSave;
+
     public bool curtainIsActive;
     public string curtainOpenText;
     public string curtainCloseText;

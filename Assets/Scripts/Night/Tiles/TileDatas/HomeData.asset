@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 491f53220f04ab3479460a1e7ba57d41, type: 3}
   m_Name: HomeData
   m_EditorClassIdentifier: Assembly-CSharp::HomeTileData
-  type: 4
+  type: 2
   mainVisual:
   - {fileID: -9126115544629603560, guid: 594162869c147e641a63cfa5a5c04cc8, type: 3}
   - {fileID: 8382853024136180452, guid: c442d4acf55ea784c9da129137745464, type: 3}
