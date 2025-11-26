@@ -214,7 +214,7 @@ public class MapGenerator : MonoBehaviour
         var map = GameData.Instance.Map;
         int mapSize = MapSize;
 
-        Pos homePos = new(0,0);
+        Pos homePos = new(0, 0);
         foreach (var kvp in map)
         {
             if (kvp.Value is HomeTile)

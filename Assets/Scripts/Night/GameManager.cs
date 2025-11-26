@@ -30,7 +30,6 @@ public class GameManager : MonoBehaviour
     }
     IEnumerator PlayOpening()
     {
-        yield return CurtainManager.Instance.OpeningFrontFlow();
 
         bool hasSave = false;
 
@@ -42,21 +41,28 @@ public class GameManager : MonoBehaviour
 
         if (hasSave)
         {
-            Debug.Log("セーブデータあったので続きから開始");
+            yield return CurtainManager.Instance.OpeningFrontFlow(
+                "Now Awaking..", "");
+
+            MainCommondsManager.Instance.Init();
+            MainDisplay.Instance.UpdateNight();
+            MainDisplay.Instance.UpdateDisplay();
+
+            yield return CurtainManager.Instance.BackFlow("Now Awaked..", "");
         }
         else
         {
-            Debug.Log("セーブデータ無し。新規開始");
+            yield return CurtainManager.Instance.OpeningFrontFlow(
+                "目が覚めたら夜だった。\n\nお家に帰らなきゃ！", "");
+
             yield return MapGenerator.Instance.Generate();
+            MainCommondsManager.Instance.Init();
+            MainDisplay.Instance.UpdateNight();
+            MainDisplay.Instance.UpdateDisplay();
+
+            yield return CurtainManager.Instance.OpeningBackFlow();
+
         }
-
-
-        MainCommondsManager.Instance.Init();
-        MainDisplay.Instance.UpdateNight();
-        MainDisplay.Instance.UpdateDisplay();
-
-        yield return StartCoroutine(CurtainManager.Instance
-            .OpeningBackFlow());
     }
 
 

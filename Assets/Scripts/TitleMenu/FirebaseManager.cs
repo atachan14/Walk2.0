@@ -51,7 +51,7 @@ public class FirebaseManager : MonoBehaviour
         await doc.SetAsync(data, SetOptions.MergeAll);
     }
 
-    // クリア記録追加
+    // ClearRecord 関連
     public IEnumerator AddClearRecordCoroutine()
     {
         var task = AddClearRecord();
@@ -63,9 +63,13 @@ public class FirebaseManager : MonoBehaviour
     }
     public async Task AddClearRecord()
     {
+        if (!GameData.Instance.EndTime.HasValue)
+        {
+            throw new Exception("EndTime が null のまま ClearRecord を送信しようとした。");
+        }
         try
         {
-            var elapsed = (DateTime)GameData.Instance.EndTime - GameData.Instance.StartTime;
+            var elapsed = GameData.Instance.EndTime.Value - GameData.Instance.StartTime;
             long timeSec = (long)elapsed.TotalSeconds;
 
             var data = new Dictionary<string, object>
@@ -75,7 +79,9 @@ public class FirebaseManager : MonoBehaviour
             { "mapSize", NightSession.Instance.CurrentSize },
             { "walkCount", GameData.Instance.WalkCount },
             { "turnCount", GameData.Instance.TurnCount },
+            { "notchCount", GameData.Instance.NotchCount },
             { "timeSec", timeSec },
+            { "endTime", Timestamp.FromDateTime(GameData.Instance.EndTime.Value.ToUniversalTime()) },
             { "startTime", Timestamp.FromDateTime(GameData.Instance.StartTime.ToUniversalTime()) }
         };
 
@@ -88,7 +94,72 @@ public class FirebaseManager : MonoBehaviour
             throw; // 呼び出し元にも知らせたいならそのまま再スロー
         }
     }
-    // コルーチン用ラッパー
+
+    public IEnumerator LoadClearRecordsCoroutine()
+    {
+        var task = LoadAllClearRecords();
+        while (!task.IsCompleted)
+            yield return null;
+
+        if (task.IsFaulted)
+            Debug.LogError(task.Exception);
+    }
+    public async Task LoadAllClearRecords()
+    {
+        try
+        {
+            QuerySnapshot snap = await db.Collection("ClearRecords").GetSnapshotAsync();
+            List<ClearRecord> list = new();
+
+            foreach (var doc in snap.Documents)
+            {
+                // Firestore → ClearRecord の安全変換
+                ClearRecord record = ConvertToClearRecord(doc);
+                list.Add(record);
+            }
+
+            DieryManager.Instance.AllClearRecords = list;
+            Debug.Log($"ClearRecordの取り込み成功: {list.Count} 件");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("ClearRecord読み込み失敗: " + e);
+            throw;
+        }
+    }
+    private ClearRecord ConvertToClearRecord(DocumentSnapshot snap)
+    {
+        string uid = snap.ContainsField("uid") ? snap.GetValue<string>("uid") : "";
+        int size = snap.ContainsField("mapSize") ? snap.GetValue<int>("mapSize") : 0;
+        string name = snap.ContainsField("name") ? snap.GetValue<string>("name") : "";
+        int walk = snap.ContainsField("walkCount") ? snap.GetValue<int>("walkCount") : 0;
+        int turn = snap.ContainsField("turnCount") ? snap.GetValue<int>("turnCount") : 0;
+        long time = snap.ContainsField("timeSec") ? snap.GetValue<long>("timeSec") : 0;
+
+        DateTime date;
+        if (snap.ContainsField("endTime"))
+        {
+            var ts = snap.GetValue<Timestamp>("endTime");
+            date = ts.ToDateTime().ToLocalTime();   // ← JST に変換。必要ならここ変える。
+        }
+        else
+        {
+            date = DateTime.MinValue;
+        }
+
+        return new ClearRecord(
+            uid,
+            size,
+            name,
+            walk,
+            turn,
+            time,
+            date
+        );
+    }
+
+
+    // saveData 関連
     public IEnumerator SetSaveDataCoroutine()
     {
         var task = SetSaveData();
@@ -264,6 +335,7 @@ public class FirebaseManager : MonoBehaviour
 
         GameData.Instance.Map = restoredMap;
         GameData.Instance.PathSteps = restoredSteps;
+        NightSession.Instance.CurrentSize = snap.GetValue<int>("mapSize");
         GameData.Instance.WalkCount = snap.GetValue<int>("walkCount");
         GameData.Instance.TurnCount = snap.GetValue<int>("turnCount");
         GameData.Instance.NotchCount = snap.GetValue<int>("notchCount");

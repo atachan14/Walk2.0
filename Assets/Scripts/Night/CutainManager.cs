@@ -20,14 +20,14 @@ public class CurtainManager : MonoBehaviour
     }
 
     // --- フロント演出（フェードイン方向） ---
-    public IEnumerator OpeningFrontFlow()
+    public IEnumerator OpeningFrontFlow(string c, string b)
     {
  
         // ①セットアップ（groupはアルファ0でシーンに配置しとく）
         SetAlpha(centerTMP, 0);
         SetAlpha(bottomTMP, 0);
-        centerTMP.text = "目が覚めたら夜だった。\n\nお家に帰らなきゃ！";
-        bottomTMP.text = "";
+        centerTMP.text = c;
+        bottomTMP.text = b;
 
         //②CenterTMPをフェードイン
         yield return StartCoroutine(FadeText(centerTMP, true)); // フェードイン
@@ -61,13 +61,10 @@ public class CurtainManager : MonoBehaviour
     }
     public IEnumerator MiddleText(string c, string b)
     {
-        Debug.Log("MiddleText Start");
         yield return StartCoroutine(FadeText(centerTMP,false));
-        Debug.Log("Center FadeOut Complete");
         centerTMP.text = c;
         bottomTMP.text = b;
         yield return StartCoroutine(FadeText(centerTMP, true));
-        Debug.Log("Center FadeIn Complete");
     }
     public IEnumerator GroupStayTapAnywhere()
     {

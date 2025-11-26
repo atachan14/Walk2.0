@@ -1,14 +1,12 @@
 ### 開発リスト ###
-- Ending以降の流れ修正
-    - [GoToHome] 座標移動
-    - MainVisualManagerでEnding表示に分岐
+- Diary
+    - Scroll消す
+    - somooneの記録
+        - 
 
-- HomeManager
-    - HomeDir
-        0. 寝る
-        1. ResultMap
-        2. アルバム
-
+    - mapSize==0
+        - select
+        - retry
 
 ClearRecords
     └── <auto-id>
@@ -17,6 +15,8 @@ ClearRecords
         ├── NightSession.Instance.CurrentSize
         ├── GameData.Instance.WalkCount
         ├── GameData.Instance.TurnCount
+        ├── GameData.Instance.NotchCount
+        ├── GameData.Instance.EndTime
         ├── GameData.Instance.EndTime - GameData.Instance.StartTime
         └── GameData.Instance.StartTime
 

@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 using static GameData;
-#if UNITY_EDITOR
 public class DebugMapManager : MonoBehaviour
 {
     public static DebugMapManager Instance;
@@ -100,4 +99,3 @@ public class DebugMapManager : MonoBehaviour
         playerObj.transform.localPosition = basePos + dirOffset;
     }
 }
-#endif

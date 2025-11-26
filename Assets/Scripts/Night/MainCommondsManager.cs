@@ -165,7 +165,7 @@ public class MainCommondsManager : MonoBehaviour
     }
     IEnumerator DiaryExe()
     {
-        yield return DiaryManager.Instance.Open();
+        yield return DieryManager.Instance.OpenDiery();
     }
 
 }
