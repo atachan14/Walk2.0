@@ -27,8 +27,6 @@ public class MapGenerator : MonoBehaviour
         Map = GameData.Instance.Map;
         SetupMapSize();
         SetupNone();
-        //SetupRiver();
-        //SetupBridge();
         SetupTree();
         SetupHome();
         SetupPlayer();
