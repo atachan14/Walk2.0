@@ -2,13 +2,14 @@ using NUnit.Framework;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public enum TabType
 {
-    my, every, map
+    my, every, night
 }
 public enum SortType
 {
@@ -52,6 +53,7 @@ public class DieryManager : MonoBehaviour
 
     public CanvasGroup DieryUI;
     public Image DieryBG;
+    public TextMeshProUGUI myTabText;
     public Color myColor;
     public Color everyColor;
     public Color mapColor;
@@ -62,32 +64,83 @@ public class DieryManager : MonoBehaviour
 
     TabType currentTab = TabType.my;
     int currentSize = 0;
-    SortType currentSort = SortType.size;
+    SortType currentSort = SortType.date;
     bool isName = false;
 
     int currentPage = 0;
-    int pageRows = 20;
+    int pageRows = 10;
     public TextMeshProUGUI pageText;
 
-    public void OnMyTabButton () => CurrentTab = TabType.my;
-    public void OnEveryTabButton () => CurrentTab = TabType.every;
-    public void OnMapTabButton() => CurrentTab = TabType.map;
+    // nightTab
+    public GameObject nightTab;
+    public TMP_InputField currentSizeField;
+    public Button currentSizeDown;
+    public Button currentSizeUp;
+
+
+    public void OnMyTabButton() => CurrentTab = TabType.my;
+    public void OnEveryTabButton() => CurrentTab = TabType.every;
+    public void OnMapTabButton() => CurrentTab = TabType.night;
     public void OnSizeButton() => CurrentSort = SortType.size;
     public void OnWalkButton() => CurrentSort = SortType.walk;
     public void OnTurnButton() => CurrentSort = SortType.turn;
     public void OnTimeButton() => CurrentSort = SortType.time;
     public void OnDateButton() => CurrentSort = SortType.date;
     public void OnNameToggle() => IsName = !IsName;
-
     public void OnSizeSelect(int size)
     {
         currentSize = size;
         Debug.Log($"Selected size: {currentSize}");
-        CurrentTab = TabType.map;
+        CurrentTab = TabType.night;
     }
-
     public void OnNextPageButton() => NextPage();
     public void OnPrevPageButton() => PrevPage();
+
+    // nightTab
+    public void OnCurrentSizeFieldChanged(string text)
+    {
+        Debug.Log($"CurrentSizeField changed: {currentSizeField.text}");
+        if (int.TryParse(currentSizeField.text, out int size))
+        {
+            currentSize = size;
+            CurrentSizeCheck();
+            ResetPage();
+            UpdateDiery();
+        }
+    }
+    public void OnCurrentSizeDownButton()
+    {
+        currentSize = currentSize - 1;
+        currentSizeField.text = currentSize.ToString();
+        CurrentSizeCheck();
+        ResetPage();
+        UpdateDiery();
+    }
+    public void OnCurrentSizeUpButton()
+    {
+        currentSize = currentSize + 1;
+        currentSizeField.text = currentSize.ToString();
+        CurrentSizeCheck();
+        ResetPage();
+        UpdateDiery();
+    }
+
+    void CurrentSizeCheck()
+    {
+        currentSizeDown.interactable = currentSize > 5;
+    }
+    public void OnPlayCurrentSizeButton()
+    {
+        StartCoroutine(PlayCurrentSizeCoroutine());
+    }
+    IEnumerator PlayCurrentSizeCoroutine()
+    { 
+        yield return CurtainManager.Instance.FrontFlow("now sleeping..", "");
+        yield return FirebaseManager.Instance.ClearSaveDataCoroutine();
+        NightSession.Instance.CurrentSize = currentSize;
+        yield return CurtainManager.Instance.GroupStayBackFlow("now sleeped..", "");
+        UnityEngine.SceneManagement.SceneManager.LoadScene("Night");
+    }
 
     int MaxPage
     {
@@ -101,7 +154,7 @@ public class DieryManager : MonoBehaviour
         }
     }
 
-    
+
     public TabType CurrentTab
     {
         get { return currentTab; }
@@ -147,6 +200,14 @@ public class DieryManager : MonoBehaviour
         DieryUI.alpha = 1;
         DieryUI.blocksRaycasts = true;
         DieryUI.interactable = true;
+
+        // 自分の最新サイズを取得
+        currentSize = AllClearRecords
+            .Where(r => r.Uid == SystemInfo.deviceUniqueIdentifier) // 自分の記録だけ抽出
+            .OrderByDescending(r => r.Date)                         // 日付降順にソート
+            .Select(r => r.Size)                                    // サイズだけ取り出す
+            .FirstOrDefault();                                      // 最新のサイズ、なければ 0
+
         ResetPage();
         UpdateDiery();
     }
@@ -172,20 +233,24 @@ public class DieryManager : MonoBehaviour
         switch (currentTab)
         {
             case TabType.my:
+                myTabText.text = $"{ParsonalManager.Instance.Name}\nの記録";
                 SelectedClearRecords = SelectedClearRecords.FindAll(
                     x => x.Uid == SystemInfo.deviceUniqueIdentifier);
                 DieryBG.color = myColor;
+                nightTab.SetActive(false);
                 break;
 
-            
+
             case TabType.every:
                 DieryBG.color = everyColor;
+                nightTab.SetActive(false);
                 break;
 
-            case TabType.map:
+            case TabType.night:
                 SelectedClearRecords = SelectedClearRecords.FindAll(
                     x => x.Size == currentSize);
                 DieryBG.color = mapColor;
+                nightTab.SetActive(true);
                 break;
 
         }

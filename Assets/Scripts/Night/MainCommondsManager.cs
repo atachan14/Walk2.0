@@ -64,7 +64,7 @@ public class MainCommondsManager : MonoBehaviour
                 break;
 
             case CommondType.LeftTurn:
-                yield return LeftTurnExe();                break;
+                yield return LeftTurnExe(); break;
 
             case CommondType.Walk:
                 yield return WalkExe();
@@ -135,7 +135,7 @@ public class MainCommondsManager : MonoBehaviour
         GameData.Instance.AddWalk();
         GameData.Instance.EndTime = DateTime.Now;
 
-        if (NameManager.Instance.Name != null) 
+        if (ParsonalManager.Instance.Name != null)
         {
             yield return FirebaseManager.Instance.AddClearRecordCoroutine();
         }
@@ -145,13 +145,13 @@ public class MainCommondsManager : MonoBehaviour
     }
     IEnumerator SleepExe()
     {
-       
-        if (NameManager.Instance.Name == null)
+
+        if (ParsonalManager.Instance.Name == null)
         {
             yield return NameInputManager.Instance.InputName();
             yield return CurtainManager.Instance.MiddleText("now sleeping..", "");
             yield return FirebaseManager.Instance.AddClearRecordCoroutine();
-            
+
         }
         else
         {
@@ -159,7 +159,7 @@ public class MainCommondsManager : MonoBehaviour
         }
 
         yield return FirebaseManager.Instance.ClearSaveDataCoroutine();
-        NightSession.Instance.CurrentSize++;
+        NightSession.Instance.CurrentSize = ParsonalManager.Instance.MaxSize + 1;
         yield return CurtainManager.Instance.GroupStayBackFlow("now sleeped..", "");
         UnityEngine.SceneManagement.SceneManager.LoadScene("Night");
     }

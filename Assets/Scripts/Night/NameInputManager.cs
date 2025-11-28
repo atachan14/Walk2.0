@@ -40,16 +40,16 @@ public class NameInputManager : MonoBehaviour
         if (string.IsNullOrEmpty(input))
             input = "noname"; // ‹ó‚Ìê‡‚Ì“K“–‹~Ï
 
-        NameManager.Instance.Name = input;
+        ParsonalManager.Instance.Name = input;
 
         // •Û‘¶
-        var task = FirebaseManager.Instance.SetName(NameManager.Instance.Name);
+        var task = FirebaseManager.Instance.SetName(ParsonalManager.Instance.Name);
         yield return new WaitUntil(() => task.IsCompleted);
 
         // UI•Â‚¶‚é
         NameInputPanel.SetActive(false);
 
-        yield return CurtainManager.Instance.MiddleText($"{NameManager.Instance.Name} memorizing..", "");
-        yield return CurtainManager.Instance.GroupStayBackFlow($"{NameManager.Instance.Name} memorized..", "");
+        yield return CurtainManager.Instance.MiddleText($"{ParsonalManager.Instance.Name} memorizing..", "");
+        yield return CurtainManager.Instance.GroupStayBackFlow($"{ParsonalManager.Instance.Name} memorized..", "");
     }
 }

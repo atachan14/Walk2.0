@@ -1,12 +1,20 @@
 ### 開発リスト ###
-- Diary
-    - Scroll消す
-    - somooneの記録
-        - 
+- Name
+    - 文字数制限
 
-    - mapSize==0
-        - select
-        - retry
+- menu
+    - 日記
+    - オプション
+        - sound
+            - bgm
+            - se
+    - 諦める
+
+### 保留リスト ###
+- Diary
+    - somooneの記録
+        - フォロー
+    - フォローの記録
 
 ClearRecords
     └── <auto-id>

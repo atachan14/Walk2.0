@@ -52,8 +52,8 @@ public class ResultMapManager : DebugMapManager
 
         // 累積ステップ数をトラッキングして全体カラーを滑らかに補間
         int currentStep = 0;
-        Color startColor = Color.yellow;
-        Color endColor = Color.red;
+        Color startColor = Color.red;
+        Color endColor = Color.blue;
 
         foreach (var seg in replayData.segments)
         {

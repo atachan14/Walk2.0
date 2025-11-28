@@ -15,9 +15,9 @@ MonoBehaviour:
   type: 2
   mainVisual:
   - {fileID: -9126115544629603560, guid: 594162869c147e641a63cfa5a5c04cc8, type: 3}
-  - {fileID: 8382853024136180452, guid: c442d4acf55ea784c9da129137745464, type: 3}
+  - {fileID: -2819401616659976916, guid: e1f1cf4aa9e4b284aac9ec71c26953fe, type: 3}
   - {fileID: -500575508164682485, guid: e38f484699fb63b4ebddb79f6e0c7673, type: 3}
-  - {fileID: 8382853024136180452, guid: c442d4acf55ea784c9da129137745464, type: 3}
+  - {fileID: 8169153007176313868, guid: 64d1054ef0f17e54bb506efca9fcbf9e, type: 3}
   mainText:
   - "\u5BB6\u3060\uFF01"
   - "\u5BB6\u3060\uFF01\u5165\u53E3\u306F\u53F3\u3060\uFF01"

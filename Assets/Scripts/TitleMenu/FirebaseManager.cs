@@ -23,17 +23,30 @@ public class FirebaseManager : MonoBehaviour
     }
 
     // 名前取得（null = 未設定）
-    public async Task<string> GetName()
+    public async Task<ParsonalDataResult> GetParsonalData()
     {
         var uid = SystemInfo.deviceUniqueIdentifier;
-
         var doc = db.Collection("ParsonalData").Document(uid);
         var snap = await doc.GetSnapshotAsync();
 
-        if (!snap.Exists || !snap.ContainsField("name"))
-            return null;
+        if (!snap.Exists)
+        {
+            // 初回プレイ：ドキュメントが無い
+            return new ParsonalDataResult(null, 0);
+        }
 
-        return snap.GetValue<string>("name");
+        string name = null;
+        int maxSize = 0;
+
+        if (snap.ContainsField("name"))
+            name = snap.GetValue<string>("name");
+
+        if (snap.ContainsField("maxSize"))
+            maxSize = snap.GetValue<int>("maxSize");
+        else
+            maxSize = 0; // 保険
+
+        return new ParsonalDataResult(name, maxSize);
     }
 
     public async Task SetName(string name)
@@ -75,7 +88,7 @@ public class FirebaseManager : MonoBehaviour
             var data = new Dictionary<string, object>
         {
             { "uid",  SystemInfo.deviceUniqueIdentifier},
-            { "name", NameManager.Instance.Name },
+            { "name", ParsonalManager.Instance.Name },
             { "mapSize", NightSession.Instance.CurrentSize },
             { "walkCount", GameData.Instance.WalkCount },
             { "turnCount", GameData.Instance.TurnCount },
@@ -92,6 +105,19 @@ public class FirebaseManager : MonoBehaviour
         {
             Debug.LogError("ClearRecord保存失敗: " + e);
             throw; // 呼び出し元にも知らせたいならそのまま再スロー
+        }
+
+        // MaxSize 更新
+        if (NightSession.Instance.CurrentSize > ParsonalManager.Instance.MaxSize)
+        {
+            ParsonalManager.Instance.MaxSize = NightSession.Instance.CurrentSize;
+
+            await db.Collection("ParsonalData")
+                .Document(SystemInfo.deviceUniqueIdentifier)
+                .SetAsync(new Dictionary<string, object>
+                {
+                    { "maxSize", NightSession.Instance.CurrentSize }
+                }, SetOptions.MergeAll);
         }
     }
 

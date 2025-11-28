@@ -64,7 +64,7 @@ public class MainDisplay : MonoBehaviour
         }
         else
         {
-            if (NameManager.Instance.Name != null)
+            if (ParsonalManager.Instance.Name != null)
             {
                 UpdateInHome();
             }

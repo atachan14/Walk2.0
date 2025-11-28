@@ -33,6 +33,7 @@ public class MapGenerator : MonoBehaviour
         SetupHome();
         SetupPlayer();
         GameData.Instance.StartTime = DateTime.Now;
+        yield return FirebaseManager.Instance.SetSaveDataCoroutine();
 
 #if UNITY_EDITOR
         DebugMapManager.Instance.Setup();
