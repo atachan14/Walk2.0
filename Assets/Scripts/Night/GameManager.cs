@@ -9,27 +9,31 @@ public enum GamePhase
 
 public class GameManager : MonoBehaviour
 {
-
     public static GameManager Instance;
-
     private void Awake()
     {
         Instance = this;
     }
-
     void Start()
     {
         StartCoroutine(GameFlowCoroutine());
     }
-
     IEnumerator GameFlowCoroutine()
     {
         yield return StartCoroutine(PlayOpening());
-
-
     }
     IEnumerator PlayOpening()
     {
+        yield return CurtainManager.Instance.OpeningFrontFlow(
+                "Now Awaking..", "");
+        if (ParsonalManager.Instance.Name == null)
+        {
+            yield return ParsonalManager.Instance.TryGetParsonalData();
+            if (ParsonalManager.Instance.Name == null)
+            {
+                MenuManager.Instance.HiddenMenu();
+            }
+        }
 
         bool hasSave = false;
 
@@ -38,11 +42,9 @@ public class GameManager : MonoBehaviour
         {
             hasSave = result;
         });
-
         if (hasSave)
         {
-            yield return CurtainManager.Instance.OpeningFrontFlow(
-                "Now Awaking..", "");
+            
 
             MainCommondsManager.Instance.Init();
             MainDisplay.Instance.UpdateNight();

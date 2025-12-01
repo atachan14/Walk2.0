@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,36 +21,67 @@ public class NameInputManager : MonoBehaviour
         yield return CurtainManager.Instance.FrontFlow("ていうか、\n\nぼくの名前はなんだっけ？", "");
         yield return CurtainManager.Instance.GroupStayTapAnywhere();
 
-        // 入力UI表示
-        NameInputPanel.SetActive(true);
 
-        // 入力欄をフォーカス → スマホIMEが出る
-        NameField.text = "";
-        NameField.ActivateInputField();
-        NameField.Select();
+        string input = null;
 
-        // 決定押すまで待つ
-        bool decided = false;
-        OkButton.onClick.RemoveAllListeners();
-        OkButton.onClick.AddListener(() => decided = true);
+        while (true)
+        {
+            // 入力UI表示
+            NameInputPanel.SetActive(true);
 
-        yield return new WaitUntil(() => decided);
+            NameField.text = "";
+            NameField.ActivateInputField();
+            NameField.Select();
 
-        // 入力値取得
-        string input = NameField.text.Trim();
-        if (string.IsNullOrEmpty(input))
-            input = "noname"; // 空の場合の適当救済
+            bool decided = false;
+            OkButton.onClick.RemoveAllListeners();
+            OkButton.onClick.AddListener(() => decided = true);
 
+            // 決定待ち
+            yield return new WaitUntil(() => decided);
+
+            input = NameField.text.Trim();
+
+            // チェック
+            string error = ValidateName(input);
+            if (error == null)
+            {
+                // OK
+                break;
+            }
+
+            // NG → エラー表示して再入力
+            yield return CurtainManager.Instance.MiddleText(error, "");
+            NameInputPanel.SetActive(false);
+        }
+
+        // 通過してきた名前を採用
         ParsonalManager.Instance.Name = input;
 
         // 保存
-        var task = FirebaseManager.Instance.SetName(ParsonalManager.Instance.Name);
+        var task = FirebaseManager.Instance.SetName(input);
         yield return new WaitUntil(() => task.IsCompleted);
 
         // UI閉じる
         NameInputPanel.SetActive(false);
 
-        yield return CurtainManager.Instance.MiddleText($"{ParsonalManager.Instance.Name} memorizing..", "");
-        yield return CurtainManager.Instance.GroupStayBackFlow($"{ParsonalManager.Instance.Name} memorized..", "");
+        yield return CurtainManager.Instance.MiddleText($"{input} memorizing..", "");
+        yield return CurtainManager.Instance.GroupStayBackFlow($"{input} memorized..", "");
+    }
+    private string ValidateName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "名前が空っぽなんだけど？";
+
+        if (name.Length < 1)
+            return "短すぎ。1文字以上のはず";
+
+        if (name.Length > 10)
+            return "長すぎ。10文字以内のはず";
+
+        //if (existingNames.Contains(name))
+        //    return "その名前もう使われてるし？かぶってんよ？";
+
+        return null; // OK
     }
 }

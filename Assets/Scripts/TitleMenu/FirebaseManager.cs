@@ -368,7 +368,7 @@ public class FirebaseManager : MonoBehaviour
         GameData.Instance.StartTime = snap.GetValue<Timestamp>("startTime").ToDateTime().ToLocalTime();
         if (snap.ContainsField("endTime"))
         {
-            GameData.Instance.EndTime = snap.GetValue<Timestamp>("endTime").ToDateTime();
+            GameData.Instance.EndTime = snap.GetValue<Timestamp>("endTime").ToDateTime().ToLocalTime();
         }
         else
         {

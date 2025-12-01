@@ -99,7 +99,6 @@ public class DieryManager : MonoBehaviour
     // nightTab
     public void OnCurrentSizeFieldChanged(string text)
     {
-        Debug.Log($"CurrentSizeField changed: {currentSizeField.text}");
         if (int.TryParse(currentSizeField.text, out int size))
         {
             currentSize = size;
@@ -251,6 +250,7 @@ public class DieryManager : MonoBehaviour
                     x => x.Size == currentSize);
                 DieryBG.color = mapColor;
                 nightTab.SetActive(true);
+                currentSizeField.text = currentSize.ToString();
                 break;
 
         }

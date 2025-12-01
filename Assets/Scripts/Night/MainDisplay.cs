@@ -34,7 +34,7 @@ public class MainDisplay : MonoBehaviour
         TimeSpan elapsed;
         if (GameData.Instance.EndTime != null)
         {
-            elapsed = (DateTime)GameData.Instance.EndTime-GameData.Instance.StartTime;
+            elapsed = (DateTime)GameData.Instance.EndTime - GameData.Instance.StartTime;
         }
         else
         {
@@ -66,11 +66,11 @@ public class MainDisplay : MonoBehaviour
         {
             if (ParsonalManager.Instance.Name != null)
             {
-                UpdateInHome();
+                UpdateEndDisplay();
             }
             else
             {
-                UpdateNoNameInHome();
+                UpdateNoNameEndDisplay();
             }
         }
 
@@ -107,7 +107,7 @@ public class MainDisplay : MonoBehaviour
         // 5. デバッグ用
         DebugMapManager.Instance.UpdateOverlay();
     }
-    public void UpdateInHome()
+    public void UpdateEndDisplay()
     {
 
         mainVisual.sprite = AssetManager.Instance.Visual.InHome;
@@ -131,7 +131,7 @@ public class MainDisplay : MonoBehaviour
         ResultMapManager.Instance.CreateBaseGrid();
         StartCoroutine(ResultMapManager.Instance.PlayReplay());
     }
-    public void UpdateNoNameInHome()
+    public void UpdateNoNameEndDisplay()
     {
 
         mainVisual.sprite = AssetManager.Instance.Visual.InHome;

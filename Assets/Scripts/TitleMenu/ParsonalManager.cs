@@ -30,10 +30,10 @@ public class ParsonalManager : MonoBehaviour
     }
     private void Start()
     {
-        StartCoroutine(TryGetParsonalData());
+        
     }
 
-    private IEnumerator TryGetParsonalData()
+    public IEnumerator TryGetParsonalData()
     {
         var task = FirebaseManager.Instance.GetParsonalData();
         yield return new WaitUntil(() => task.IsCompleted);

@@ -26,10 +26,21 @@ public class MapGenerator : MonoBehaviour
     {
         Map = GameData.Instance.Map;
         SetupMapSize();
-        SetupNone();
-        SetupTree();
-        SetupHome();
-        SetupPlayer();
+
+        bool ok = false;
+        // ここでチェック
+        while (!ok)
+        {
+            // 生成し直す
+            SetupNone();
+            SetupTree();
+            SetupHome();
+            SetupPlayer();
+
+            ok = IsReachable();
+            Debug.Log($"Map Generation Retry: {!ok}, TreeCount: {CountTree(Map)}");
+        }
+
         GameData.Instance.StartTime = DateTime.Now;
         yield return FirebaseManager.Instance.SetSaveDataCoroutine();
 
@@ -37,7 +48,6 @@ public class MapGenerator : MonoBehaviour
         DebugMapManager.Instance.Setup();
 #endif
 
-        yield break;
     }
 
     void SetupMapSize()
@@ -248,4 +258,87 @@ public class MapGenerator : MonoBehaviour
         Pos pos = candidates[Random.Range(0, candidates.Count)];
         GameData.Instance.AddPlayer(pos, Random.Range(0, 4));
     }
+    public bool IsReachable()
+    {
+        var map = GameData.Instance.Map;
+        int w = NightSession.Instance.CurrentSize;
+        int h = NightSession.Instance.CurrentSize;
+
+        // ▼ Home の座標を探す
+        Pos homePos = new Pos(-1, -1);
+        foreach (var kv in map)
+        {
+            if (kv.Value.GetData().type == TileType.home)
+            {
+                homePos = kv.Key;
+                break;
+            }
+        }
+        if (homePos.x == -1)
+        {
+            Debug.LogError("Homeが見つからん。お前の生成壊れてんぞ。");
+            return false;
+        }
+
+        // ▼ Home の下（y - 1） ※トーラス対応
+        Pos start = new Pos(homePos.x, Mod(homePos.y - 1, h));
+
+        // ▼ Player
+        Pos goal = GameData.Instance.PlayerPos;
+
+        // ▼ BFS 開始
+        Queue<Pos> q = new();
+        HashSet<(int, int)> visited = new();
+
+        q.Enqueue(start);
+        visited.Add((start.x, start.y));
+
+        // 4方向
+        Pos[] dirs =
+        {
+        new Pos(1, 0),
+        new Pos(-1, 0),
+        new Pos(0, 1),
+        new Pos(0, -1),
+    };
+
+        while (q.Count > 0)
+        {
+            Pos p = q.Dequeue();
+
+            // ゴール到達
+            if (p.x == goal.x && p.y == goal.y)
+                return true;
+
+            foreach (var d in dirs)
+            {
+                Pos np = new Pos(
+                    Mod(p.x + d.x, w),
+                    Mod(p.y + d.y, h)
+                );
+
+                if (visited.Contains((np.x, np.y)))
+                    continue;
+
+                // 通れるタイル？
+                Tile t = map[np];
+                var type = t.GetData().type;
+
+                if (type != TileType.none && type != TileType.home)
+                    continue;
+
+                visited.Add((np.x, np.y));
+                q.Enqueue(np);
+            }
+        }
+
+        return false;
+    }
+
+    // ▼ C# は負数 % がクソなので自作
+    int Mod(int a, int m)
+    {
+        return (a % m + m) % m;
+    }
+
 }
