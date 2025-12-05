@@ -15,6 +15,7 @@ MonoBehaviour:
   type: 0
   btnIsActive: 0
   btnText: 
+  dontSave: 1
   curtainIsActive: 0
   curtainOpenText: 
   curtainCloseText: 

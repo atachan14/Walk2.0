@@ -39,37 +39,82 @@ public class ResultMapManager : DebugMapManager
     // =======================================
     public IEnumerator PlayReplay()
     {
-        Debug.Log("replay");
         replayData = FormatReplayPath(GameData.Instance.PathSteps);
-        float totalTime = 10f; // 全体再生時間
-        int totalSteps = 0;
 
-        // 総ステップ数計算（全ワープ含めた全ポイント間の補間）
-        foreach (var seg in replayData.segments)
-            totalSteps += (seg.points.Count - 1) * 8;
-
-        float waitTime = totalTime / totalSteps;
-
-        // 累積ステップ数をトラッキングして全体カラーを滑らかに補間
-        int currentStep = 0;
-        Color startColor = Color.red;
-        Color endColor = Color.blue;
+        float totalTime = 10f; // ← お前が好きに設定する尺
+        float totalDistance = CalcTotalDistance(replayData);
 
         foreach (var seg in replayData.segments)
         {
             var lr = CreateLine();
+            float segDistance = 0f;
 
-            // 現在のLineRendererの色を決める（グラデーション全体の中の位置に応じて）
-            float t0 = (float)currentStep / totalSteps;
-            float t1 = (float)(currentStep + (seg.points.Count - 1) * 8) / totalSteps;
+            // セグメントの距離
+            for (int i = 1; i < seg.points.Count; i++)
+                segDistance += Vector3.Distance(seg.points[i - 1].pos, seg.points[i].pos);
 
-            lr.startColor = Color.Lerp(startColor, endColor, t0);
-            lr.endColor = Color.Lerp(startColor, endColor, t1);
+            // セグメントの持ち時間（ここが最重要）
+            float segDuration = (segDistance / totalDistance) * totalTime;
+            float speed = segDistance / segDuration; // = 距離 / 時間（秒速）
 
-            yield return DrawLineSmooth(lr, seg.points, waitTime);
+            float t = 0f;
 
-            currentStep += (seg.points.Count - 1) * 8;
+            for (int i = 1; i < seg.points.Count; i++)
+            {
+                Vector3 a = seg.points[i - 1].pos;
+                Vector3 b = seg.points[i].pos;
+                float d = Vector3.Distance(a, b);
+                float localTime = d / speed; // その区間の時間
+
+                float elapsed = 0f;
+
+                while (elapsed < localTime)
+                {
+                    elapsed += Time.deltaTime;
+
+                    float lerpT = Mathf.Clamp01(elapsed / localTime);
+                    Vector3 p = Vector3.Lerp(a, b, lerpT);
+
+                    AddPointToLine(lr, p);
+
+                    yield return null;
+                }
+
+                SpawnNotch(seg.points[i]);
+            }
         }
+    }
+
+    float CalcTotalDistance(ReplayDataSerializable data)
+    {
+        float dist = 0f;
+
+        foreach (var seg in data.segments)
+        {
+            for (int i = 1; i < seg.points.Count; i++)
+                dist += Vector3.Distance(seg.points[i - 1].pos, seg.points[i].pos);
+        }
+
+        return dist;
+    }
+
+    LineRenderer CreateLine()
+    {
+        GameObject lineObj = Instantiate(lineRendererPrefab, overlayLayer);
+        var lr = lineObj.GetComponent<LineRenderer>();
+        lr.startWidth = lr.endWidth = cellSize * 0.1f;
+        lr.material = lineMaterial;
+        lr.positionCount = 0;    // ← ここを明示
+        lr.useWorldSpace = false;
+        return lr;
+    }
+
+    // これをクラス内に追加して使って
+    void AddPointToLine(LineRenderer lr, Vector3 p)
+    {
+        int idx = lr.positionCount;    // 現在の最後の index を取得
+        lr.positionCount = idx + 1;    // 末尾に1つ分スペースを作る
+        lr.SetPosition(idx, p);        // その位置に座標を入れる
     }
 
 
@@ -118,46 +163,60 @@ public class ResultMapManager : DebugMapManager
     // =======================================
     // ✨ 線描画
     // =======================================
-    IEnumerator DrawLineSmooth(LineRenderer line, List<ReplayPoint> points, float waitTime)
+    IEnumerator DrawLineSmooth(LineRenderer line, List<ReplayPoint> points, float stepDuration)
     {
         line.positionCount = 0;
         line.useWorldSpace = false;
+
         List<Vector3> path = new();
+        float subStepTime = stepDuration;   // subStep 1個の長さ
 
         for (int i = 1; i < points.Count; i++)
         {
             Vector3 a = points[i - 1].pos;
             Vector3 b = points[i].pos;
+
             int subSteps = 8;
 
             for (int j = 1; j <= subSteps; j++)
             {
-                Vector3 p = Vector3.Lerp(a, b, j / (float)subSteps);
-                path.Add(p);
-                line.positionCount = path.Count;
-                line.SetPositions(path.ToArray());
+                float t = j / (float)subSteps;
 
-                // Notchがあれば出す（補間ステップの最後だけでOK）
+                float elapsed = 0f;
+                while (elapsed < subStepTime)
+                {
+                    elapsed += Time.deltaTime;
+
+                    float lerpT = Mathf.Clamp01(elapsed / subStepTime);
+                    Vector3 p = Vector3.Lerp(a, b, (j - 1 + lerpT) / subSteps);
+
+                    path.Add(p);
+                    line.positionCount = path.Count;
+                    line.SetPositions(path.ToArray());
+
+                    yield return null; // フレーム毎に更新
+                }
+
+                // Notchは区間の最後でだけ
                 if (j == subSteps)
                     SpawnNotch(points[i]);
-
-                yield return new WaitForSeconds(waitTime);
             }
         }
     }
 
+
     // =======================================
     // 🔧 ヘルパー系（再利用OK）
     // =======================================
-    LineRenderer CreateLine()
-    {
-        GameObject lineObj = Instantiate(lineRendererPrefab, overlayLayer);
-        var lr = lineObj.GetComponent<LineRenderer>();
-        lr.startWidth = lr.endWidth = cellSize * 0.1f;
-        lr.material = lineMaterial;
-        // 色は後で設定するのでここでは省略！
-        return lr;
-    }
+    //LineRenderer CreateLine()
+    //{
+    //    GameObject lineObj = Instantiate(lineRendererPrefab, overlayLayer);
+    //    var lr = lineObj.GetComponent<LineRenderer>();
+    //    lr.startWidth = lr.endWidth = cellSize * 0.1f;
+    //    lr.material = lineMaterial;
+    //    // 色は後で設定するのでここでは省略！
+    //    return lr;
+    //}
 
 
     Vector3 DirToOffset(int dir)

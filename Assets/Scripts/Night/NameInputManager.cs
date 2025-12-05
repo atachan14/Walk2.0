@@ -26,7 +26,6 @@ public class NameInputManager : MonoBehaviour
 
         while (true)
         {
-            // 入力UI表示
             NameInputPanel.SetActive(true);
 
             NameField.text = "";
@@ -37,23 +36,34 @@ public class NameInputManager : MonoBehaviour
             OkButton.onClick.RemoveAllListeners();
             OkButton.onClick.AddListener(() => decided = true);
 
-            // 決定待ち
             yield return new WaitUntil(() => decided);
 
             input = NameField.text.Trim();
 
-            // チェック
-            string error = ValidateName(input);
-            if (error == null)
+            // --- ローカルチェック ---
+            string error = ValidateNameLocal(input);
+            if (error != null)
             {
-                // OK
-                break;
+                yield return CurtainManager.Instance.MiddleText(error, "");
+                NameInputPanel.SetActive(false);
+                continue; // もっかい
             }
 
-            // NG → エラー表示して再入力
-            yield return CurtainManager.Instance.MiddleText(error, "");
-            NameInputPanel.SetActive(false);
+            // --- Firebase チェック（非同期） ---
+            var checkTask = FirebaseManager.Instance.IsNameAlreadyUsed(input);
+            yield return new WaitUntil(() => checkTask.IsCompleted);
+
+            if (checkTask.Result)
+            {
+                yield return CurtainManager.Instance.MiddleText("その名前もう使われてるし？他のにして？", "");
+                NameInputPanel.SetActive(false);
+                continue;
+            }
+
+            // 全チェック通過
+            break;
         }
+
 
         // 通過してきた名前を採用
         ParsonalManager.Instance.Name = input;
@@ -68,20 +78,18 @@ public class NameInputManager : MonoBehaviour
         yield return CurtainManager.Instance.MiddleText($"{input} memorizing..", "");
         yield return CurtainManager.Instance.GroupStayBackFlow($"{input} memorized..", "");
     }
-    private string ValidateName(string name)
+    private string ValidateNameLocal(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
             return "名前が空っぽなんだけど？";
 
         if (name.Length < 1)
-            return "短すぎ。1文字以上のはず";
+            return "短すぎ。1文字以上のはず。";
 
         if (name.Length > 10)
-            return "長すぎ。10文字以内のはず";
+            return "長すぎ。10文字以内のはず。";
 
-        //if (existingNames.Contains(name))
-        //    return "その名前もう使われてるし？かぶってんよ？";
-
-        return null; // OK
+        return null; // ローカルチェックOK
     }
+
 }

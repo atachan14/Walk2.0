@@ -36,11 +36,12 @@ public class MenuManager : MonoBehaviour
     {
         OptionManager.Instance.Open();
     }
-    public void ClickGiveUp()
+    public void ClickRitire()
     {
         ToggleMenu();
         GameData.Instance.EndTime = DateTime.Now;
         StartCoroutine(FirebaseManager.Instance.SetSaveDataCoroutine());
+        BGMManager.Instance.PlayRetire();
         MainDisplay.Instance.UpdateDisplay();
     }
 }

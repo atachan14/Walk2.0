@@ -57,6 +57,12 @@ public class MainCommondsManager : MonoBehaviour
     }
     public IEnumerator Exe(CommondData cd)
     {
+        if (cd.btnIsActive)
+        {
+            SEManager.Instance.PlayClick();
+        }
+
+
         switch (cd.type)
         {
             case CommondType.None:
@@ -139,6 +145,7 @@ public class MainCommondsManager : MonoBehaviour
         {
             yield return FirebaseManager.Instance.AddClearRecordCoroutine();
         }
+        BGMManager.Instance.PlayClear();
 
         MainDisplay.Instance.UpdateDisplay();
         yield return CurtainManager.Instance.BackFlow("Now Walked.", "");

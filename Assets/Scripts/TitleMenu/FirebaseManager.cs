@@ -63,6 +63,14 @@ public class FirebaseManager : MonoBehaviour
 
         await doc.SetAsync(data, SetOptions.MergeAll);
     }
+    public async Task<bool> IsNameAlreadyUsed(string name)
+    {
+        var query = db.Collection("ParsonalData")
+                      .WhereEqualTo("name", name);
+
+        var snapshot = await query.GetSnapshotAsync();
+        return snapshot.Count > 0;
+    }
 
     // ClearRecord ŠÖ˜A
     public IEnumerator AddClearRecordCoroutine()
