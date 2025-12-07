@@ -126,7 +126,7 @@ public class DieryManager : MonoBehaviour
 
     void CurrentSizeCheck()
     {
-        currentSizeDown.interactable = currentSize > 5;
+        currentSizeDown.interactable = currentSize > 3;
     }
     public void OnPlayCurrentSizeButton()
     {

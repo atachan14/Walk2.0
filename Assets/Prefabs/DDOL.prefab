@@ -1343,7 +1343,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 322c604feb1944a4394b4cbb0c30490e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NightSession
-  CurrentSize: 1
+  CurrentSize: 3
 --- !u!114 &2781948070692737986
 MonoBehaviour:
   m_ObjectHideFlags: 0
