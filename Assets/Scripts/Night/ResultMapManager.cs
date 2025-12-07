@@ -41,7 +41,7 @@ public class ResultMapManager : DebugMapManager
     {
         Debug.Log("replay");
         replayData = FormatReplayPath(GameData.Instance.PathSteps);
-        float totalTime = 10f; // 全体再生時間
+        float totalTime = 8f; // 全体再生時間
         int totalSteps = 0;
 
         // 総ステップ数計算（全ワープ含めた全ポイント間の補間）
@@ -52,7 +52,7 @@ public class ResultMapManager : DebugMapManager
 
         // 累積ステップ数をトラッキングして全体カラーを滑らかに補間
         int currentStep = 0;
-        Color startColor = Color.red;
+        Color startColor = Color.pink;
         Color endColor = Color.blue;
 
         foreach (var seg in replayData.segments)
@@ -87,8 +87,15 @@ public class ResultMapManager : DebugMapManager
         for (int i = 0; i < replay.Count; i++)
         {
             var step = replay[i];
-            Vector3 cellCenter = new(step.pos.x * cellSize, step.pos.y * cellSize, -0.1f);
-            Vector3 pos = cellCenter + DirToOffset(step.dir);
+
+            Vector3 cellCenter = new(step.pos.x * cellSize,
+                                     step.pos.y * cellSize,
+                                     -0.1f);
+
+            // ★最後のステップだけ offset 無し
+            Vector3 pos = (i == replay.Count - 1)
+                ? cellCenter                      // ←中央にする
+                : cellCenter + DirToOffset(step.dir);
 
             if (i == 0)
             {
@@ -109,8 +116,9 @@ public class ResultMapManager : DebugMapManager
             if (warpedY)
                 current = HandleWarpY(prev.pos, step.pos, current, result, NightSession.Instance.CurrentSize, cellCenter);
 
-            current.points.Add(new ReplayPoint(pos, step.notchData)); // notchDataを渡す
+            current.points.Add(new ReplayPoint(pos, step.notchData));
         }
+
 
         return result;
     }
@@ -176,7 +184,7 @@ public class ResultMapManager : DebugMapManager
     bool IsWarp(int d)
     {
         int mapSize = NightSession.Instance.CurrentSize;
-        return Mathf.Abs(d) >= 4;
+        return Mathf.Abs(d) >= mapSize -1;
     }
 
 
