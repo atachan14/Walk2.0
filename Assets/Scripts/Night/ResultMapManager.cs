@@ -39,37 +39,112 @@ public class ResultMapManager : DebugMapManager
     // =======================================
     public IEnumerator PlayReplay()
     {
-        Debug.Log("replay");
         replayData = FormatReplayPath(GameData.Instance.PathSteps);
-        float totalTime = 8f; // 全体再生時間
-        int totalSteps = 0;
 
-        // 総ステップ数計算（全ワープ含めた全ポイント間の補間）
-        foreach (var seg in replayData.segments)
-            totalSteps += (seg.points.Count - 1) * 8;
+        float totalTime = 7f; // ← お前が好きに設定する尺
+        float totalDistance = CalcTotalDistance(replayData);
 
-        float waitTime = totalTime / totalSteps;
-
-        // 累積ステップ数をトラッキングして全体カラーを滑らかに補間
-        int currentStep = 0;
-        Color startColor = Color.pink;
-        Color endColor = Color.blue;
+        float accumulatedDist = 0f;
 
         foreach (var seg in replayData.segments)
         {
-            var lr = CreateLine();
+            float segDistance = 0f;
 
-            // 現在のLineRendererの色を決める（グラデーション全体の中の位置に応じて）
-            float t0 = (float)currentStep / totalSteps;
-            float t1 = (float)(currentStep + (seg.points.Count - 1) * 8) / totalSteps;
+            for (int i = 1; i < seg.points.Count; i++)
+                segDistance += Vector3.Distance(seg.points[i - 1].pos, seg.points[i].pos);
 
-            lr.startColor = Color.Lerp(startColor, endColor, t0);
-            lr.endColor = Color.Lerp(startColor, endColor, t1);
+            float startT = accumulatedDist / totalDistance;
+            float endT = (accumulatedDist + segDistance) / totalDistance;
 
-            yield return DrawLineSmooth(lr, seg.points, waitTime);
+            accumulatedDist += segDistance;
 
-            currentStep += (seg.points.Count - 1) * 8;
+            var lr = CreateLine(startT, endT); // ★ ココ重要
+
+            // あとは元の区間再生処理そのまま
+            float segDuration = (segDistance / totalDistance) * totalTime;
+            float speed = segDistance / segDuration; // = 距離 / 時間（秒速）
+
+            float t = 0f;
+
+            for (int i = 1; i < seg.points.Count; i++)
+            {
+                Vector3 a = seg.points[i - 1].pos;
+                Vector3 b = seg.points[i].pos;
+                float d = Vector3.Distance(a, b);
+                float localTime = d / speed; // その区間の時間
+
+                float elapsed = 0f;
+
+                while (elapsed < localTime)
+                {
+                    elapsed += Time.deltaTime;
+
+                    float lerpT = Mathf.Clamp01(elapsed / localTime);
+                    Vector3 p = Vector3.Lerp(a, b, lerpT);
+
+                    AddPointToLine(lr, p);
+
+                    yield return null;
+                }
+
+                SpawnNotch(seg.points[i]);
+            }
         }
+    }
+
+    float CalcTotalDistance(ReplayDataSerializable data)
+    {
+        float dist = 0f;
+
+        foreach (var seg in data.segments)
+        {
+            for (int i = 1; i < seg.points.Count; i++)
+                dist += Vector3.Distance(seg.points[i - 1].pos, seg.points[i].pos);
+        }
+
+        return dist;
+    }
+
+    LineRenderer CreateLine(float startT, float endT)
+    {
+        GameObject lineObj = Instantiate(lineRendererPrefab, overlayLayer);
+        var lr = lineObj.GetComponent<LineRenderer>();
+
+        lr.startWidth = lr.endWidth = cellSize * 0.1f;
+        lr.material = lineMaterial;
+        lr.positionCount = 0;
+        lr.useWorldSpace = false;
+
+        lr.colorGradient = MakeGradient(startT, endT);  // ← ★ 追加
+
+        return lr;
+    }
+    Gradient MakeGradient(float startT, float endT)
+    {
+        Color pink = Color.pink;
+        Color blue = Color.blue;
+        var g = new Gradient();
+
+        g.SetKeys(
+            new GradientColorKey[]
+            {
+            new GradientColorKey(Color.Lerp(pink, blue, startT), 0f),
+            new GradientColorKey(Color.Lerp(pink, blue, endT), 1f),
+            },
+            new GradientAlphaKey[]
+            {
+            new GradientAlphaKey(1f, 0f),
+            new GradientAlphaKey(1f, 1f)
+            }
+        );
+        return g;
+    }
+    // これをクラス内に追加して使って
+    void AddPointToLine(LineRenderer lr, Vector3 p)
+    {
+        int idx = lr.positionCount;    // 現在の最後の index を取得
+        lr.positionCount = idx + 1;    // 末尾に1つ分スペースを作る
+        lr.SetPosition(idx, p);        // その位置に座標を入れる
     }
 
 
@@ -88,14 +163,22 @@ public class ResultMapManager : DebugMapManager
         {
             var step = replay[i];
 
+            // まずマス中央
             Vector3 cellCenter = new(step.pos.x * cellSize,
                                      step.pos.y * cellSize,
                                      -0.1f);
 
-            // ★最後のステップだけ offset 無し
-            Vector3 pos = (i == replay.Count - 1)
-                ? cellCenter                      // ←中央にする
-                : cellCenter + DirToOffset(step.dir);
+            Vector3 pos;
+
+            // ★★★ 最後だけ DirToOffset をつけない！ ★★★
+            if (i == replay.Count - 1)
+            {
+                pos = cellCenter;                       // ← そのまま中央
+            }
+            else
+            {
+                pos = cellCenter + DirToOffset(step.dir); // ← いつもの
+            }
 
             if (i == 0)
             {
@@ -119,53 +202,9 @@ public class ResultMapManager : DebugMapManager
             current.points.Add(new ReplayPoint(pos, step.notchData));
         }
 
-
         return result;
     }
 
-    // =======================================
-    // ✨ 線描画
-    // =======================================
-    IEnumerator DrawLineSmooth(LineRenderer line, List<ReplayPoint> points, float waitTime)
-    {
-        line.positionCount = 0;
-        line.useWorldSpace = false;
-        List<Vector3> path = new();
-
-        for (int i = 1; i < points.Count; i++)
-        {
-            Vector3 a = points[i - 1].pos;
-            Vector3 b = points[i].pos;
-            int subSteps = 8;
-
-            for (int j = 1; j <= subSteps; j++)
-            {
-                Vector3 p = Vector3.Lerp(a, b, j / (float)subSteps);
-                path.Add(p);
-                line.positionCount = path.Count;
-                line.SetPositions(path.ToArray());
-
-                // Notchがあれば出す（補間ステップの最後だけでOK）
-                if (j == subSteps)
-                    SpawnNotch(points[i]);
-
-                yield return new WaitForSeconds(waitTime);
-            }
-        }
-    }
-
-    // =======================================
-    // 🔧 ヘルパー系（再利用OK）
-    // =======================================
-    LineRenderer CreateLine()
-    {
-        GameObject lineObj = Instantiate(lineRendererPrefab, overlayLayer);
-        var lr = lineObj.GetComponent<LineRenderer>();
-        lr.startWidth = lr.endWidth = cellSize * 0.1f;
-        lr.material = lineMaterial;
-        // 色は後で設定するのでここでは省略！
-        return lr;
-    }
 
 
     Vector3 DirToOffset(int dir)
@@ -184,7 +223,7 @@ public class ResultMapManager : DebugMapManager
     bool IsWarp(int d)
     {
         int mapSize = NightSession.Instance.CurrentSize;
-        return Mathf.Abs(d) >= mapSize -1;
+        return Mathf.Abs(d) >= mapSize-1;
     }
 
 
@@ -244,7 +283,7 @@ public class ResultMapManager : DebugMapManager
 
         // NotchData の位置と方向から配置
         Vector3 pos = point.notch.Value.PosAsVector() * cellSize; // Pos → Vector3に変換
-       
+
         var go = Instantiate(resultNotchPrefab, overlayLayer);
         var t = go.transform;
         t.localPosition = pos;
