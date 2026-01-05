@@ -64,7 +64,6 @@ public class ResultMapManager : DebugMapManager
             float segDuration = (segDistance / totalDistance) * totalTime;
             float speed = segDistance / segDuration; // = 距離 / 時間（秒速）
 
-            float t = 0f;
 
             for (int i = 1; i < seg.points.Count; i++)
             {
