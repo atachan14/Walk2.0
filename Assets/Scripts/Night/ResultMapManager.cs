@@ -41,8 +41,12 @@ public class ResultMapManager : DebugMapManager
     {
         replayData = FormatReplayPath(GameData.Instance.PathSteps);
 
-        float totalTime = 7f; // ← お前が好きに設定する尺
+        float totalTime = 7f;
         float totalDistance = CalcTotalDistance(replayData);
+        if (totalDistance <= Mathf.Epsilon)
+        {
+            yield break;
+        }
 
         float accumulatedDist = 0f;
 
@@ -58,11 +62,10 @@ public class ResultMapManager : DebugMapManager
 
             accumulatedDist += segDistance;
 
-            var lr = CreateLine(startT, endT); // ★ ココ重要
+            var lr = CreateLine(startT, endT);
 
-            // あとは元の区間再生処理そのまま
             float segDuration = (segDistance / totalDistance) * totalTime;
-            float speed = segDistance / segDuration; // = 距離 / 時間（秒速）
+            float speed = segDistance / segDuration;
 
 
             for (int i = 1; i < seg.points.Count; i++)

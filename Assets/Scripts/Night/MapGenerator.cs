@@ -24,14 +24,16 @@ public class MapGenerator : MonoBehaviour
 
     public IEnumerator Generate()
     {
-        Map = GameData.Instance.Map;
+        ResetRunState();
         SetupMapSize();
 
         bool ok = false;
-        // ここでチェック
         while (!ok)
         {
-            // 生成し直す
+            GameData.Instance.Map.Clear();
+            GameData.Instance.PathSteps.Clear();
+            Map = GameData.Instance.Map;
+
             SetupNone();
             SetupTree();
             SetupHome();
@@ -48,6 +50,17 @@ public class MapGenerator : MonoBehaviour
         DebugMapManager.Instance.Setup();
 #endif
 
+    }
+
+    void ResetRunState()
+    {
+        GameData.Instance.Map.Clear();
+        GameData.Instance.PathSteps.Clear();
+        GameData.Instance.WalkCount = 0;
+        GameData.Instance.TurnCount = 0;
+        GameData.Instance.NotchCount = 0;
+        GameData.Instance.EndTime = null;
+        Map = GameData.Instance.Map;
     }
 
     void SetupMapSize()
@@ -276,7 +289,7 @@ public class MapGenerator : MonoBehaviour
         }
         if (homePos.x == -1)
         {
-            Debug.LogError("Homeが見つからん。お前の生成壊れてんぞ。");
+            Debug.LogError("IsReachable: Home tile was not generated.");
             return false;
         }
 
@@ -335,7 +348,6 @@ public class MapGenerator : MonoBehaviour
         return false;
     }
 
-    // ▼ C# は負数 % がクソなので自作
     int Mod(int a, int m)
     {
         return (a % m + m) % m;

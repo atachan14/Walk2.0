@@ -1,3 +1,5 @@
+using Firebase;
+using Firebase.Auth;
 using Firebase.Firestore;
 using System;
 using System.Collections;
@@ -9,70 +11,223 @@ using static GameData;
 public class FirebaseManager : MonoBehaviour
 {
     public static FirebaseManager Instance;
+
+    const string ParsonalDataCollection = "ParsonalData";
+    const string ClearRecordsCollection = "ClearRecords";
+    const string SaveDataCollection = "SaveData";
+
     FirebaseFirestore db;
+    FirebaseAuth auth;
+    Task initializationTask;
+
+    public string CurrentUid => auth?.CurrentUser?.UserId;
+    string LegacyDeviceId => SystemInfo.deviceUniqueIdentifier;
 
     private void Awake()
     {
         if (Instance != null && Instance != this)
         {
-            Destroy(gameObject); // 二重召喚を即処刑
+            Destroy(gameObject);
             return;
         }
+
         Instance = this;
-        db = FirebaseFirestore.DefaultInstance;
+        initializationTask = InitializeAsync();
     }
 
-    // 名前取得（null = 未設定）
+    public IEnumerator EnsureReadyCoroutine()
+    {
+        var task = EnsureReadyAsync();
+        while (!task.IsCompleted)
+            yield return null;
+
+        if (task.IsFaulted)
+            throw task.Exception;
+    }
+
+    public async Task EnsureReadyAsync()
+    {
+        initializationTask ??= InitializeAsync();
+        await initializationTask;
+        await SignInAnonymouslyIfNeededAsync();
+    }
+
+    public bool IsCurrentUserId(string uid)
+    {
+        if (string.IsNullOrEmpty(uid))
+            return false;
+
+        return uid == CurrentUid || uid == LegacyDeviceId;
+    }
+
+    async Task InitializeAsync()
+    {
+        var dependencyStatus = await FirebaseApp.CheckAndFixDependenciesAsync();
+        if (dependencyStatus != DependencyStatus.Available)
+            throw new Exception($"Firebase dependencies are not available: {dependencyStatus}");
+
+        db = FirebaseFirestore.DefaultInstance;
+        auth = FirebaseAuth.DefaultInstance;
+
+        await SignInAnonymouslyIfNeededAsync();
+    }
+
+    async Task SignInAnonymouslyIfNeededAsync()
+    {
+        if (auth == null)
+            auth = FirebaseAuth.DefaultInstance;
+
+        if (auth.CurrentUser != null)
+            return;
+
+        AuthResult result = await auth.SignInAnonymouslyAsync();
+        if (result?.User == null)
+            throw new Exception("Firebase anonymous auth returned no user.");
+    }
+
+    string RequireCurrentUid()
+    {
+        string uid = CurrentUid;
+        if (string.IsNullOrEmpty(uid))
+            throw new InvalidOperationException("Firebase anonymous auth is not ready.");
+
+        return uid;
+    }
+
+    DocumentReference ParsonalDataDoc(string uid) =>
+        db.Collection(ParsonalDataCollection).Document(uid);
+
+    DocumentReference SaveDataDoc(string uid) =>
+        db.Collection(SaveDataCollection).Document(uid);
+
+    async Task<DocumentSnapshot> GetCurrentOrLegacyDocAsync(DocumentReference currentDoc, DocumentReference legacyDoc)
+    {
+        var currentSnap = await currentDoc.GetSnapshotAsync();
+        if (currentSnap.Exists || legacyDoc == null)
+            return currentSnap;
+
+        return await legacyDoc.GetSnapshotAsync();
+    }
+
+    ParsonalDataResult ConvertToParsonalDataResult(DocumentSnapshot snap)
+    {
+        string name = snap.ContainsField("name") ? snap.GetValue<string>("name") : null;
+        int maxSize = snap.ContainsField("maxSize") ? snap.GetValue<int>("maxSize") : 0;
+        return new ParsonalDataResult(name, maxSize);
+    }
+
+    async Task MigrateParsonalDataIfNeededAsync(string currentUid, string legacyUid, DocumentSnapshot legacySnap)
+    {
+        if (legacySnap == null || !legacySnap.Exists || currentUid == legacyUid)
+            return;
+
+        var data = new Dictionary<string, object>
+        {
+            { "maxSize", legacySnap.ContainsField("maxSize") ? legacySnap.GetValue<int>("maxSize") : 0 },
+            { "migratedAt", Timestamp.FromDateTime(DateTime.UtcNow) }
+        };
+
+        if (legacySnap.ContainsField("name"))
+            data["name"] = legacySnap.GetValue<string>("name");
+
+        if (legacySnap.ContainsField("created"))
+            data["created"] = legacySnap.GetValue<Timestamp>("created");
+
+        await ParsonalDataDoc(currentUid).SetAsync(data, SetOptions.MergeAll);
+    }
+
+    Dictionary<string, object> BuildSaveDataFromSnapshot(DocumentSnapshot snap)
+    {
+        var data = new Dictionary<string, object>
+        {
+            { "mapSize", snap.GetValue<int>("mapSize") },
+            { "walkCount", snap.GetValue<int>("walkCount") },
+            { "turnCount", snap.GetValue<int>("turnCount") },
+            { "notchCount", snap.GetValue<int>("notchCount") },
+            { "startTime", snap.GetValue<Timestamp>("startTime") },
+            { "map", snap.GetValue<List<object>>("map") },
+            { "steps", snap.GetValue<List<object>>("steps") },
+            { "migratedAt", Timestamp.FromDateTime(DateTime.UtcNow) }
+        };
+
+        if (snap.ContainsField("endTime"))
+            data["endTime"] = snap.GetValue<Timestamp>("endTime");
+
+        return data;
+    }
+
+    async Task<DocumentSnapshot> GetMigratedSaveDataSnapshotAsync(string currentUid, string legacyUid)
+    {
+        var currentDoc = SaveDataDoc(currentUid);
+        var currentSnap = await currentDoc.GetSnapshotAsync();
+        if (currentSnap.Exists || currentUid == legacyUid)
+            return currentSnap;
+
+        var legacyDoc = SaveDataDoc(legacyUid);
+        var legacySnap = await legacyDoc.GetSnapshotAsync();
+        if (!legacySnap.Exists)
+            return legacySnap;
+
+        await currentDoc.SetAsync(BuildSaveDataFromSnapshot(legacySnap));
+        return legacySnap;
+    }
+
     public async Task<ParsonalDataResult> GetParsonalData()
     {
-        var uid = SystemInfo.deviceUniqueIdentifier;
-        var doc = db.Collection("ParsonalData").Document(uid);
-        var snap = await doc.GetSnapshotAsync();
+        await EnsureReadyAsync();
+
+        string currentUid = RequireCurrentUid();
+        string legacyUid = LegacyDeviceId;
+
+        var currentDoc = ParsonalDataDoc(currentUid);
+        var legacyDoc = currentUid == legacyUid ? null : ParsonalDataDoc(legacyUid);
+        var snap = await GetCurrentOrLegacyDocAsync(currentDoc, legacyDoc);
 
         if (!snap.Exists)
-        {
-            // 初回プレイ：ドキュメントが無い
             return new ParsonalDataResult(null, 0);
-        }
 
-        string name = null;
-        int maxSize = 0;
+        if (snap.Id == legacyUid && currentUid != legacyUid)
+            await MigrateParsonalDataIfNeededAsync(currentUid, legacyUid, snap);
 
-        if (snap.ContainsField("name"))
-            name = snap.GetValue<string>("name");
-
-        if (snap.ContainsField("maxSize"))
-            maxSize = snap.GetValue<int>("maxSize");
-        else
-            maxSize = 0; // 保険
-
-        return new ParsonalDataResult(name, maxSize);
+        return ConvertToParsonalDataResult(snap);
     }
 
     public async Task SetName(string name)
     {
-        var uid = SystemInfo.deviceUniqueIdentifier;
+        await EnsureReadyAsync();
 
-        var doc = db.Collection("ParsonalData").Document(uid);
+        string currentUid = RequireCurrentUid();
+        var doc = ParsonalDataDoc(currentUid);
+        var existingSnap = await doc.GetSnapshotAsync();
 
-        var data = new
+        var data = new Dictionary<string, object>
         {
-            name,
-            created = DateTime.Now
+            { "name", name }
         };
+
+        if (!existingSnap.Exists || !existingSnap.ContainsField("created"))
+            data["created"] = Timestamp.FromDateTime(DateTime.UtcNow);
 
         await doc.SetAsync(data, SetOptions.MergeAll);
     }
+
     public async Task<bool> IsNameAlreadyUsed(string name)
     {
-        var query = db.Collection("ParsonalData")
-                      .WhereEqualTo("name", name);
+        await EnsureReadyAsync();
+
+        var query = db.Collection(ParsonalDataCollection)
+            .WhereEqualTo("name", name);
 
         var snapshot = await query.GetSnapshotAsync();
-        return snapshot.Count > 0;
+        foreach (var doc in snapshot.Documents)
+        {
+            if (!IsCurrentUserId(doc.Id))
+                return true;
+        }
+
+        return false;
     }
 
-    // ClearRecord 関連
     public IEnumerator AddClearRecordCoroutine()
     {
         var task = AddClearRecord();
@@ -82,46 +237,46 @@ public class FirebaseManager : MonoBehaviour
         if (task.IsFaulted)
             Debug.LogError(task.Exception);
     }
+
     public async Task AddClearRecord()
     {
+        await EnsureReadyAsync();
+
         if (!GameData.Instance.EndTime.HasValue)
-        {
-            throw new Exception("EndTime が null のまま ClearRecord を送信しようとした。");
-        }
+            throw new Exception("EndTime was null when ClearRecord was requested.");
+
         try
         {
             var elapsed = GameData.Instance.EndTime.Value - GameData.Instance.StartTime;
             long timeSec = (long)elapsed.TotalSeconds;
 
             var data = new Dictionary<string, object>
-        {
-            { "uid",  SystemInfo.deviceUniqueIdentifier},
-            { "name", ParsonalManager.Instance.Name },
-            { "mapSize", NightSession.Instance.CurrentSize },
-            { "walkCount", GameData.Instance.WalkCount },
-            { "turnCount", GameData.Instance.TurnCount },
-            { "notchCount", GameData.Instance.NotchCount },
-            { "timeSec", timeSec },
-            { "endTime", Timestamp.FromDateTime(GameData.Instance.EndTime.Value.ToUniversalTime()) },
-            { "startTime", Timestamp.FromDateTime(GameData.Instance.StartTime.ToUniversalTime()) }
-        };
+            {
+                { "uid", RequireCurrentUid() },
+                { "name", ParsonalManager.Instance.Name },
+                { "mapSize", NightSession.Instance.CurrentSize },
+                { "walkCount", GameData.Instance.WalkCount },
+                { "turnCount", GameData.Instance.TurnCount },
+                { "notchCount", GameData.Instance.NotchCount },
+                { "timeSec", timeSec },
+                { "endTime", Timestamp.FromDateTime(GameData.Instance.EndTime.Value.ToUniversalTime()) },
+                { "startTime", Timestamp.FromDateTime(GameData.Instance.StartTime.ToUniversalTime()) }
+            };
 
-            await db.Collection("ClearRecords").AddAsync(data);
-            Debug.Log("ClearRecord保存成功");
+            await db.Collection(ClearRecordsCollection).AddAsync(data);
+            Debug.Log("ClearRecord saved.");
         }
         catch (Exception e)
         {
-            Debug.LogError("ClearRecord保存失敗: " + e);
-            throw; // 呼び出し元にも知らせたいならそのまま再スロー
+            Debug.LogError("ClearRecord save failed: " + e);
+            throw;
         }
 
-        // MaxSize 更新
         if (NightSession.Instance.CurrentSize > ParsonalManager.Instance.MaxSize)
         {
             ParsonalManager.Instance.MaxSize = NightSession.Instance.CurrentSize;
 
-            await db.Collection("ParsonalData")
-                .Document(SystemInfo.deviceUniqueIdentifier)
+            await ParsonalDataDoc(RequireCurrentUid())
                 .SetAsync(new Dictionary<string, object>
                 {
                     { "maxSize", NightSession.Instance.CurrentSize }
@@ -138,30 +293,30 @@ public class FirebaseManager : MonoBehaviour
         if (task.IsFaulted)
             Debug.LogError(task.Exception);
     }
+
     public async Task LoadAllClearRecords()
     {
+        await EnsureReadyAsync();
+
         try
         {
-            QuerySnapshot snap = await db.Collection("ClearRecords").GetSnapshotAsync();
+            QuerySnapshot snap = await db.Collection(ClearRecordsCollection).GetSnapshotAsync();
             List<ClearRecord> list = new();
 
             foreach (var doc in snap.Documents)
-            {
-                // Firestore → ClearRecord の安全変換
-                ClearRecord record = ConvertToClearRecord(doc);
-                list.Add(record);
-            }
+                list.Add(ConvertToClearRecord(doc));
 
             DieryManager.Instance.AllClearRecords = list;
-            Debug.Log($"ClearRecordの取り込み成功: {list.Count} 件");
+            Debug.Log($"ClearRecord load success: {list.Count} rows.");
         }
         catch (Exception e)
         {
-            Debug.LogError("ClearRecord読み込み失敗: " + e);
+            Debug.LogError("ClearRecord load failed: " + e);
             throw;
         }
     }
-    private ClearRecord ConvertToClearRecord(DocumentSnapshot snap)
+
+    ClearRecord ConvertToClearRecord(DocumentSnapshot snap)
     {
         string uid = snap.ContainsField("uid") ? snap.GetValue<string>("uid") : "";
         int size = snap.ContainsField("mapSize") ? snap.GetValue<int>("mapSize") : 0;
@@ -170,30 +325,13 @@ public class FirebaseManager : MonoBehaviour
         int turn = snap.ContainsField("turnCount") ? snap.GetValue<int>("turnCount") : 0;
         long time = snap.ContainsField("timeSec") ? snap.GetValue<long>("timeSec") : 0;
 
-        DateTime date;
+        DateTime date = DateTime.MinValue;
         if (snap.ContainsField("endTime"))
-        {
-            var ts = snap.GetValue<Timestamp>("endTime");
-            date = ts.ToDateTime().ToLocalTime();   // ← JST に変換。必要ならここ変える。
-        }
-        else
-        {
-            date = DateTime.MinValue;
-        }
+            date = snap.GetValue<Timestamp>("endTime").ToDateTime().ToLocalTime();
 
-        return new ClearRecord(
-            uid,
-            size,
-            name,
-            walk,
-            turn,
-            time,
-            date
-        );
+        return new ClearRecord(uid, size, name, walk, turn, time, date);
     }
 
-
-    // saveData 関連
     public IEnumerator SetSaveDataCoroutine()
     {
         var task = SetSaveData();
@@ -201,10 +339,11 @@ public class FirebaseManager : MonoBehaviour
 
         if (task.Exception != null)
         {
-            Debug.LogError("SetSaveData コルーチン失敗: " + task.Exception);
+            Debug.LogError("SetSaveData coroutine failed: " + task.Exception);
             throw task.Exception;
         }
-        Debug.Log("SetSaveData コルーチン成功");
+
+        Debug.Log("SetSaveData coroutine success.");
     }
 
     public IEnumerator ClearSaveDataCoroutine()
@@ -214,96 +353,90 @@ public class FirebaseManager : MonoBehaviour
 
         if (task.Exception != null)
         {
-            Debug.LogError("ClearSaveData コルーチン失敗: " + task.Exception);
+            Debug.LogError("ClearSaveData coroutine failed: " + task.Exception);
             throw task.Exception;
         }
-        Debug.Log("ClearSaveData コルーチン成功");
+
+        Debug.Log("ClearSaveData coroutine success.");
     }
+
     public async Task SetSaveData()
     {
+        await EnsureReadyAsync();
+
         try
         {
-            var uid = SystemInfo.deviceUniqueIdentifier;
-
-            var mapList = BuildMapList();   // あとで実装
-            var stepList = BuildStepList();   // あとで実装
-
             var data = new Dictionary<string, object>
-        {
-            { "mapSize", NightSession.Instance.CurrentSize },
-            { "walkCount",GameData.Instance.WalkCount},
-            { "turnCount",GameData.Instance.TurnCount},
-            { "notchCount", GameData.Instance.NotchCount},
-            { "startTime", Timestamp.FromDateTime(GameData.Instance.StartTime.ToUniversalTime()) },
-            { "map", mapList },
-            { "steps", stepList }
-        };
+            {
+                { "mapSize", NightSession.Instance.CurrentSize },
+                { "walkCount", GameData.Instance.WalkCount },
+                { "turnCount", GameData.Instance.TurnCount },
+                { "notchCount", GameData.Instance.NotchCount },
+                { "startTime", Timestamp.FromDateTime(GameData.Instance.StartTime.ToUniversalTime()) },
+                { "map", BuildMapList() },
+                { "steps", BuildStepList() }
+            };
 
             if (GameData.Instance.EndTime != null)
-            {
                 data["endTime"] = Timestamp.FromDateTime(GameData.Instance.EndTime.Value.ToUniversalTime());
-            }
 
-            var doc = db.Collection("SaveData").Document(uid);
-            await doc.SetAsync(data);
+            await SaveDataDoc(RequireCurrentUid()).SetAsync(data);
         }
         catch (Exception e)
         {
-            Debug.LogError("SaveData保存失敗: " + e);
+            Debug.LogError("SaveData save failed: " + e);
             throw;
         }
     }
+
     public async Task ClearSaveData()
     {
+        await EnsureReadyAsync();
+
         try
         {
-            var uid = SystemInfo.deviceUniqueIdentifier;
-            var doc = db.Collection("SaveData").Document(uid);
-
-            await doc.DeleteAsync();
-            Debug.Log("SaveData ドキュメント削除完了");
+            await SaveDataDoc(RequireCurrentUid()).DeleteAsync();
+            Debug.Log("SaveData deleted.");
         }
         catch (Exception e)
         {
-            Debug.LogError("SaveData削除失敗: " + e);
+            Debug.LogError("SaveData delete failed: " + e);
             throw;
         }
     }
 
-    private List<object> BuildStepList()
+    List<object> BuildStepList()
     {
         var list = new List<object>();
 
         foreach (var step in GameData.Instance.PathSteps)
         {
-            // notchData がある場合だけ辞書を作る
             object notchDict = null;
             if (step.notchData.HasValue)
             {
                 var nd = step.notchData.Value;
                 notchDict = new Dictionary<string, object>
-            {
-                { "count", nd.count },
-                { "x", nd.pos.x },
-                { "y", nd.pos.y },
-                { "dir", nd.dir }
-            };
+                {
+                    { "count", nd.count },
+                    { "x", nd.pos.x },
+                    { "y", nd.pos.y },
+                    { "dir", nd.dir }
+                };
             }
 
-            // step 自体の辞書
-            var dict = new Dictionary<string, object>
-        {
-            { "x", step.pos.x },
-            { "y", step.pos.y },
-            { "dir", step.dir },
-            { "notch", notchDict }   // null なら null のまま保存される
-        };
-
-            list.Add(dict);
+            list.Add(new Dictionary<string, object>
+            {
+                { "x", step.pos.x },
+                { "y", step.pos.y },
+                { "dir", step.dir },
+                { "notch", notchDict }
+            });
         }
+
         return list;
     }
-    private List<object> BuildMapList()
+
+    List<object> BuildMapList()
     {
         var list = new List<object>();
 
@@ -313,75 +446,61 @@ public class FirebaseManager : MonoBehaviour
             Tile tile = kvp.Value;
 
             var dict = new Dictionary<string, object>
-        {
-            { "x", pos.x },
-            { "y", pos.y },
-            { "type", tile.GetType().Name }   // "Tile" / "TreeTile"
-        };
-
-            // TreeTile なら marks を追加
-            if (tile is TreeTile tree)
             {
+                { "x", pos.x },
+                { "y", pos.y },
+                { "type", tile.GetType().Name }
+            };
+
+            if (tile is TreeTile tree)
                 dict["marks"] = new List<int>(tree.marks);
-            }
 
             list.Add(dict);
         }
 
         return list;
     }
+
     public IEnumerator LoadSaveDataCoroutine(Action<bool> callback)
     {
         var task = LoadSaveData();
-
-        // 完了を待つ
         while (!task.IsCompleted)
             yield return null;
 
         if (task.IsFaulted)
         {
-            Debug.LogError("LoadSaveData 失敗: " + task.Exception);
+            Debug.LogError("LoadSaveData failed: " + task.Exception);
             callback?.Invoke(false);
+            yield break;
         }
-        else
-        {
-            callback?.Invoke(task.Result);
-        }
+
+        callback?.Invoke(task.Result);
     }
+
     public async Task<bool> LoadSaveData()
     {
-        var uid = SystemInfo.deviceUniqueIdentifier;
-        var doc = db.Collection("SaveData").Document(uid);
+        await EnsureReadyAsync();
 
-        var snap = await doc.GetSnapshotAsync();
+        string currentUid = RequireCurrentUid();
+        string legacyUid = LegacyDeviceId;
+        var snap = await GetMigratedSaveDataSnapshotAsync(currentUid, legacyUid);
         if (!snap.Exists)
-        {
-            return false; // セーブデータ無し
-        }
+            return false;
 
-        // map の生データ取得
         var rawMap = snap.GetValue<List<object>>("map");
         var rawStep = snap.GetValue<List<object>>("steps");
 
-        // 復元実行
-        var restoredMap = BuildMapFromList(rawMap);
-        var restoredSteps = BuildStepsFromList(rawStep);
-
-        GameData.Instance.Map = restoredMap;
-        GameData.Instance.PathSteps = restoredSteps;
+        GameData.Instance.Map = BuildMapFromList(rawMap);
+        GameData.Instance.PathSteps = BuildStepsFromList(rawStep);
         NightSession.Instance.CurrentSize = snap.GetValue<int>("mapSize");
         GameData.Instance.WalkCount = snap.GetValue<int>("walkCount");
         GameData.Instance.TurnCount = snap.GetValue<int>("turnCount");
         GameData.Instance.NotchCount = snap.GetValue<int>("notchCount");
         GameData.Instance.StartTime = snap.GetValue<Timestamp>("startTime").ToDateTime().ToLocalTime();
-        if (snap.ContainsField("endTime"))
-        {
-            GameData.Instance.EndTime = snap.GetValue<Timestamp>("endTime").ToDateTime().ToLocalTime();
-        }
-        else
-        {
-            GameData.Instance.EndTime = null;
-        }
+        GameData.Instance.EndTime = snap.ContainsField("endTime")
+            ? snap.GetValue<Timestamp>("endTime").ToDateTime().ToLocalTime()
+            : null;
+
 #if UNITY_EDITOR
         DebugMapManager.Instance.Setup();
 #endif
@@ -389,113 +508,89 @@ public class FirebaseManager : MonoBehaviour
         return true;
     }
 
-    private Dictionary<Pos, Tile> BuildMapFromList(List<object> rawList)
+    Dictionary<Pos, Tile> BuildMapFromList(List<object> rawList)
     {
         var map = new Dictionary<Pos, Tile>();
 
         foreach (var raw in rawList)
         {
-            // Firestore から来るのは Dictionary<string, object>
             var dict = raw as Dictionary<string, object>;
-            if (dict == null) continue;
+            if (dict == null)
+                continue;
 
             int x = Convert.ToInt32(dict["x"]);
             int y = Convert.ToInt32(dict["y"]);
             string type = dict["type"].ToString();
 
-            Tile tile;
-
-            switch (type)
+            Tile tile = type switch
             {
-                case "NoneTile":
-                    {
-                        tile = new NoneTile();
-                        break;
-                    }
-                case "TreeTile":
-                    {
-                        var tree = new TreeTile();
+                "NoneTile" => new NoneTile(),
+                "HomeTile" => new HomeTile(),
+                "TreeTile" => BuildTreeTile(dict),
+                _ => new NoneTile()
+            };
 
-                        if (dict.TryGetValue("marks", out var marksObj)
-                            && marksObj is List<object> marksRaw)
-                        {
-                            // Firestore の int は long だったりするので変換注意
-                            for (int i = 0; i < tree.marks.Length && i < marksRaw.Count; i++)
-                            {
-                                tree.marks[i] = Convert.ToInt32(marksRaw[i]);
-                            }
-                        }
+            if (type != "NoneTile" && type != "HomeTile" && type != "TreeTile")
+                Debug.LogWarning($"Unknown tile type: {type} at ({x}, {y})");
 
-                        tile = tree;
-                        break;
-                    }
-                case "HomeTile":
-                    {
-                        tile = new HomeTile();
-                        break;
-                    }
-                default:
-                    tile = new NoneTile(); // 不明なタイプは NoneTile にフォールバック
-                    Debug.LogWarning($"不明なタイルタイプ: {type} at ({x}, {y})");
-                    break;
-            }
-
-            var pos = new Pos { x = x, y = y };
-            map[pos] = tile;
+            map[new Pos { x = x, y = y }] = tile;
         }
 
         return map;
     }
+
+    Tile BuildTreeTile(Dictionary<string, object> dict)
+    {
+        var tree = new TreeTile();
+        if (dict.TryGetValue("marks", out var marksObj) && marksObj is List<object> marksRaw)
+        {
+            for (int i = 0; i < tree.marks.Length && i < marksRaw.Count; i++)
+                tree.marks[i] = Convert.ToInt32(marksRaw[i]);
+        }
+
+        return tree;
+    }
+
     public List<PathStep> BuildStepsFromList(List<object> rawList)
     {
         var steps = new List<PathStep>();
-
-        if (rawList == null) return steps;
+        if (rawList == null)
+            return steps;
 
         foreach (var item in rawList)
         {
             var dict = item as Dictionary<string, object>;
-            if (dict == null) continue;
+            if (dict == null)
+                continue;
 
-            // pos と dir（存在しないと例外が出るので要チェック）
-            int x = dict.ContainsKey("x") ? Convert.ToInt32(dict["x"]) : 0;
-            int y = dict.ContainsKey("y") ? Convert.ToInt32(dict["y"]) : 0;
-            int dir = dict.ContainsKey("dir") ? Convert.ToInt32(dict["dir"]) : 0;
-
-            var ps = new PathStep
+            var step = new PathStep
             {
-                pos = new Pos { x = x, y = y },
-                dir = dir,
+                pos = new Pos
+                {
+                    x = dict.ContainsKey("x") ? Convert.ToInt32(dict["x"]) : 0,
+                    y = dict.ContainsKey("y") ? Convert.ToInt32(dict["y"]) : 0
+                },
+                dir = dict.ContainsKey("dir") ? Convert.ToInt32(dict["dir"]) : 0,
                 notchData = null
             };
 
-            // notch が存在してかつ null じゃなければ復元
-            if (dict.TryGetValue("notch", out var notchObj) && notchObj != null)
+            if (dict.TryGetValue("notch", out var notchObj) && notchObj is Dictionary<string, object> notchDict)
             {
-                var notchDict = notchObj as Dictionary<string, object>;
-                if (notchDict != null)
+                step.notchData = new NotchData
                 {
-                    int ncount = notchDict.ContainsKey("count") ? Convert.ToInt32(notchDict["count"]) : 0;
-                    int nx = notchDict.ContainsKey("x") ? Convert.ToInt32(notchDict["x"]) : 0;
-                    int ny = notchDict.ContainsKey("y") ? Convert.ToInt32(notchDict["y"]) : 0;
-                    int ndir = notchDict.ContainsKey("dir") ? Convert.ToInt32(notchDict["dir"]) : 0;
-
-                    var nd = new NotchData
+                    count = notchDict.ContainsKey("count") ? Convert.ToInt32(notchDict["count"]) : 0,
+                    pos = new Pos
                     {
-                        count = ncount,
-                        pos = new Pos { x = nx, y = ny },
-                        dir = ndir
-                    };
-
-                    ps.notchData = nd; // nullable に boxing される
-                }
+                        x = notchDict.ContainsKey("x") ? Convert.ToInt32(notchDict["x"]) : 0,
+                        y = notchDict.ContainsKey("y") ? Convert.ToInt32(notchDict["y"]) : 0
+                    },
+                    dir = notchDict.ContainsKey("dir") ? Convert.ToInt32(notchDict["dir"]) : 0
+                };
             }
 
-            steps.Add(ps);
+            steps.Add(step);
         }
 
         return steps;
     }
-
-
 }

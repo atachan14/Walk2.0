@@ -26,6 +26,7 @@ public class GameManager : MonoBehaviour
     {
         yield return CurtainManager.Instance.OpeningFrontFlow(
                 "Now Awaking..", "");
+        yield return FirebaseManager.Instance.EnsureReadyCoroutine();
         if (ParsonalManager.Instance.Name == null)
         {
             yield return ParsonalManager.Instance.TryGetParsonalData();
@@ -37,7 +38,7 @@ public class GameManager : MonoBehaviour
 
         bool hasSave = false;
 
-        // SaveData ‚Ì—L–³‚¾‚¯‚ğó‚¯æ‚é
+        // SaveData ã®æœ‰ç„¡ã ã‘ã‚’å—ã‘å–ã‚‹
         yield return FirebaseManager.Instance.LoadSaveDataCoroutine(result =>
         {
             hasSave = result;
@@ -55,7 +56,7 @@ public class GameManager : MonoBehaviour
         else
         {
             yield return CurtainManager.Instance.OpeningFrontFlow(
-                "–Ú‚ªŠo‚ß‚½‚ç–é‚¾‚Á‚½B\n\n‚¨‰Æ‚É‹A‚ç‚È‚«‚áI", "");
+                "ç›®ãŒè¦šã‚ãŸã‚‰å¤œã ã£ãŸã€‚\n\nãŠå®¶ã«å¸°ã‚‰ãªãã‚ƒï¼", "");
 
             yield return MapGenerator.Instance.Generate();
             MainCommondsManager.Instance.Init();

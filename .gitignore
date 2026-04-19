@@ -1,5 +1,14 @@
 /Assets/Firebase/Plugins/*
 /Builded*
+/.utmp/
+/Assets/_Recovery/
+/Assets/_Recovery.meta
+*.rej
+user.keystore
+/Assets/StreamingAssets/google-services*.json
+/Assets/StreamingAssets/google-services*.json.meta
+/Assets/Plugins/Android/FirebaseApp.androidlib/res/values/google-services.xml
+/Assets/Plugins/Android/FirebaseApp.androidlib/res/values/google-services.xml.meta
 # This .gitignore file should be placed at the root of your Unity project directory
 #
 # Get latest from https://github.com/github/gitignore/blob/main/Unity.gitignore

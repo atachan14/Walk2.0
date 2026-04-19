@@ -200,12 +200,12 @@ public class DieryManager : MonoBehaviour
         DieryUI.blocksRaycasts = true;
         DieryUI.interactable = true;
 
-        // ©•ª‚ÌÅVƒTƒCƒY‚ğæ“¾
+        // è‡ªåˆ†ã®æœ€æ–°ã‚µã‚¤ã‚ºã‚’å–å¾—
         currentSize = AllClearRecords
-            .Where(r => r.Uid == SystemInfo.deviceUniqueIdentifier) // ©•ª‚Ì‹L˜^‚¾‚¯’Šo
-            .OrderByDescending(r => r.Date)                         // “ú•t~‡‚Éƒ\[ƒg
-            .Select(r => r.Size)                                    // ƒTƒCƒY‚¾‚¯æ‚èo‚·
-            .FirstOrDefault();                                      // ÅV‚ÌƒTƒCƒYA‚È‚¯‚ê‚Î 0
+            .Where(r => FirebaseManager.Instance.IsCurrentUserId(r.Uid))
+            .OrderByDescending(r => r.Date)                         // æ—¥ä»˜é™é †ã«ã‚½ãƒ¼ãƒˆ
+            .Select(r => r.Size)                                    // ã‚µã‚¤ã‚ºã ã‘å–ã‚Šå‡ºã™
+            .FirstOrDefault();                                      // æœ€æ–°ã®ã‚µã‚¤ã‚ºã€ãªã‘ã‚Œã° 0
 
         ResetPage();
         UpdateDiery();
@@ -226,15 +226,15 @@ public class DieryManager : MonoBehaviour
             return;
         }
 
-        // ‡@ ƒ^ƒu‚ÅƒtƒBƒ‹ƒ^ƒŠƒ“ƒO
+        // â‘  ã‚¿ãƒ–ã§ãƒ•ã‚£ãƒ«ã‚¿ãƒªãƒ³ã‚°
         SelectedClearRecords = new(AllClearRecords);
 
         switch (currentTab)
         {
             case TabType.my:
-                myTabText.text = $"{ParsonalManager.Instance.Name}\n‚Ì‹L˜^";
+                myTabText.text = $"{ParsonalManager.Instance.Name}\nã®è¨˜éŒ²";
                 SelectedClearRecords = SelectedClearRecords.FindAll(
-                    x => x.Uid == SystemInfo.deviceUniqueIdentifier);
+                    x => FirebaseManager.Instance.IsCurrentUserId(x.Uid));
                 DieryBG.color = myColor;
                 nightTab.SetActive(false);
                 break;
@@ -255,7 +255,7 @@ public class DieryManager : MonoBehaviour
 
         }
 
-        // ‡A ƒ\[ƒg
+        // â‘¡ ã‚½ãƒ¼ãƒˆ
         SelectedClearRecords.Sort(currentSort switch
         {
             SortType.size => (a, b) => b.Size.CompareTo(a.Size),
@@ -266,7 +266,7 @@ public class DieryManager : MonoBehaviour
             _ => (a, b) => 0
         });
 
-        // ‡B “¯ uid ‚Ì 2 Œ–ÚˆÈ~‚ğíœiisName ƒtƒ‰ƒOj
+        // â‘¢ åŒ uid ã® 2 ä»¶ç›®ä»¥é™ã‚’å‰Šé™¤ï¼ˆisName ãƒ•ãƒ©ã‚°ï¼‰
         if (isName)
         {
             HashSet<string> seen = new();
@@ -278,12 +278,12 @@ public class DieryManager : MonoBehaviour
             });
         }
 
-        // ‡C ƒy[ƒWƒ“ƒOi‚±‚±’´d—vj
+        // â‘£ ãƒšãƒ¼ã‚¸ãƒ³ã‚°ï¼ˆã“ã“è¶…é‡è¦ï¼‰
         int start = currentPage * pageRows;
         int end = Mathf.Min(start + pageRows, SelectedClearRecords.Count);
         pageText.text = $"{currentPage + 1} / {MaxPage + 1}";
 
-        // ‡D UI XV
+        // â‘¤ UI æ›´æ–°
         for (int i = 0; i < DieryRows.Count; i++)
         {
             int idx = start + i;
